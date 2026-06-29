@@ -65,6 +65,8 @@ function toNum(val) {
 async function streamText(text, res, delay = 10) {
   for (const char of text) {
     res.write(char);
+    // ✅ Force flush the buffer
+    if (res.flush) res.flush();  
     await new Promise(resolve => setTimeout(resolve, delay));
   }
 }
