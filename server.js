@@ -805,8 +805,10 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
     const file = req.file;
     
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');                   
+    res.setHeader('Transfer-Encoding', 'chunked');
     
     // ✅ HANDLE FILE UPLOAD
     if (file) {
