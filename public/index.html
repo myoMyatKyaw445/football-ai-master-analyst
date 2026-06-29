@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚽ Football AI Analyst</title>
+  
+  <!-- ✅ Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- ✅ External CSS -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <!-- ✅ Header with Auth - Fixed Position -->
+    <div class="chat-header">
+      <div class="title">
+        <span>⚽</span> Football AI Analyst
+      </div>
+      <div class="auth-area" id="authArea">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+    
+    <!-- ✅ File Upload Area -->
+    <div class="upload-area">
+      <label class="upload-btn">
+        📁 Upload Excel/CSV
+        <input type="file" class="file-input" id="fileInput" accept=".xlsx,.xls,.csv">
+      </label>
+      <span class="file-name" id="fileName">No file selected</span>
+      <span class="file-status" id="fileStatus"></span>
+    </div>
+    
+    <div class="chat-box" id="chatBox">
+      <div>👋 မင်္ဂလာပါ! <strong>Football AI Analyst</strong> သို့ ကြိုဆိုပါတယ်။<br><br>
+      🔢 <strong>ဂဏန်းရိုက်ပါ:</strong> ဥပမာ <code>1.8</code>, <code>HO 1.95</code><br>
+      🔍 <strong>Team ရိုက်ပါ:</strong> ဥပမာ <code>Strommen</code>, <code>Arsenal vs Chelsea</code><br>
+      📁 <strong>Excel/CSV တင်ပါ:</strong> ပွဲအကုန်ကို အလိုအလျောက် ရှာဖွေပေးပါမယ်<br><br>
+      <em>💡 Tip: "More" လို့ ရိုက်ရင် ရလဒ်တွေကို ဆက်ကြည့်နိုင်ပါတယ်</em></div>
+    </div>
+    
+    <!-- ✅ Scroll hint -->
+    <div class="scroll-hint" id="scrollHint" onclick="scrollToBottom()">
+      ⬇️ စာသားအသစ်ရှိသည်
+    </div>
+    
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="ဥပမာ: Villa vs Arsenal အနီးစပ်ဆုံး HO နဲ့ HA ရှာပေးပါ" autocomplete="off">
+      <button class="send-btn" id="sendBtn" onclick="send()">Send</button>
+    </div>
+  </div>
+  
+  <!-- ✅ Chat History Sidebar -->
+  <div class="history-sidebar" id="historySidebar">
+    <div class="history-header">
+      <h3>💬 Chat History</h3>
+      <button onclick="toggleHistory()">✕ Close</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">Loading history...</div>
+    </div>
+  </div>
+  
+  <!-- ✅ Overlay -->
+  <div class="overlay" id="overlay" onclick="toggleHistory()"></div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const userInput = document.getElementById('userInput');
+    const scrollHint = document.getElementById('scrollHint');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const fileStatus = document.getElementById('fileStatus');
+    const authArea = document.getElementById('authArea');
+    const historySidebar = document.getElementById('historySidebar');
+    const historyList = document.getElementById('historyList');
+    const overlay = document.getElementById('overlay');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    let isAtBottom = true;
+    let isStreaming = false;
+    let uploadedFile = null;
+    let currentChatResponse = '';
+
+    // ✅ Check Login Status on Load
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/status', { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.loggedIn) {
+          authArea.innerHTML = `
+            <div class="user-info">
+              <img src="${data.user.photo}" alt="${data.user.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=007bff&color=fff'">
+              <span title="${data.user.email}">${data.user.email.split('@')[0]}</span>
+              <button onclick="logout()" class="login-btn secondary">Logout</button>
+              <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
+            </div>
+          `;
+          loadHistory();
+        } else {
+          authArea.innerHTML = `
+            <a href="/auth/google" class="login-btn" title="Login with Google">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path fill="#fff" d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+              </svg>
+              Login
+            </a>
+          `;
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+        authArea.innerHTML = `<a href="/auth/google" class="login-btn">Login</a>`;
+      }
+    }
+
+    // ✅ Logout
+    async function logout() {
+      try {
+        await fetch('/api/auth/logout', { 
+          method: 'POST', 
+          credentials: 'include' 
+        });
+        checkAuth();
+        chatBox.innerHTML = `<div>👋 Logged out. မင်္ဂလာပါ! ဂဏန်းများ ရိုက်ထည့်ပါ (ဥပမာ: 1.8)</div>`;
+      } catch (err) {
+        console.error('Logout failed:', err);
+      }
+    }
+
+    // ✅ Toggle History Sidebar
+    function toggleHistory() {
+      historySidebar.classList.toggle('open');
+      overlay.classList.toggle('show');
+      if (historySidebar.classList.contains('open')) {
+        loadHistory();
+      }
+    }
+
+    // ✅ Load Chat History
+    async function loadHistory() {
+      try {
+        historyList.innerHTML = '<div class="history-empty"><div style="font-size:1.5rem;margin-bottom:8px;">📭</div>No chat history yet<br><small style="display:block;margin-top:8px;">Start chatting to save history</small></div>';
+        
+        const res = await fetch('/api/chat/history', { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.history && data.history.length > 0) {
+          historyList.innerHTML = data.history.map((chat, i) => {
+            const date = new Date(chat.timestamp).toLocaleString('my-MM', { 
+              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+            const preview = chat.userMessage.substring(0, 35) + (chat.userMessage.length > 35 ? '...' : '');
+            const odds = chat.searchParams?.targetValue ? ` | ${chat.searchParams.activeSide?.toUpperCase()}:${chat.searchParams.targetValue}` : '';
+            
+            return `
+              <div class="history-item" onclick="loadChat(${i})">
+                <div class="date">🕐 ${date}</div>
+                <div class="preview">${preview}</div>
+                ${odds ? `<div class="odds">${odds}</div>` : ''}
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Load history failed:', err);
+        historyList.innerHTML = '<div class="history-empty" style="color:#dc3545;">❌ Failed to load history</div>';
+      }
+    }
+
+    // ✅ Load Specific Chat
+    async function loadChat(index) {
+      try {
+        const res = await fetch('/api/chat/history', { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.history[index]) {
+          const chat = data.history[index];
+          chatBox.innerHTML = `
+            <div class="user-msg">👤 You: ${chat.userMessage}</div>
+            <div>${chat.aiResponse}</div>
+          `;
+          toggleHistory();
+          scrollToBottom();
+        }
+      } catch (err) {
+        console.error('Load chat failed:', err);
+      }
+    }
+
+    // ✅ File Upload Handler
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      fileName.textContent = file.name.length > 25 ? file.name.substring(0, 22) + '...' : file.name;
+      uploadedFile = file;
+      
+      fileStatus.textContent = '📤 Uploading...';
+      fileStatus.className = 'file-status pending';
+      sendBtn.disabled = true;
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const response = await fetch('/api/chat-stream', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error('Upload failed');
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          fullResponse += chunk;
+        }
+        
+        fileStatus.textContent = '✅ Uploaded!';
+        fileStatus.className = 'file-status success';
+        
+        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left-color: var(--success);">📁 File "${fileName.textContent}" uploaded successfully! Ready to search historical data.</div>\n\n`;
+        scrollToBottom();
+        
+        // ✅ Save to history if logged in
+        if (await isLoggedIn()) {
+          await saveChatToHistory('📁 File Upload: ' + file.name, fullResponse, { type: 'file_upload', fileName: file.name });
+        }
+        
+      } catch (err) {
+        fileStatus.textContent = '❌ Failed';
+        fileStatus.className = 'file-status error';
+        chatBox.innerHTML += `<div style="color: var(--danger);">❌ Error: ${err.message}</div>\n\n`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+
+    // ✅ Scroll handlers
+    chatBox.addEventListener('scroll', () => {
+      const threshold = 50;
+      const position = chatBox.scrollTop + chatBox.clientHeight;
+      const height = chatBox.scrollHeight;
+      isAtBottom = (height - position) < threshold;
+      if (!isAtBottom && isStreaming) {
+        scrollHint.classList.add('show');
+      } else {
+        scrollHint.classList.remove('show');
+      }
+    });
+
+    function scrollToBottom() {
+      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+      scrollHint.classList.remove('show');
+    }
+
+    // ✅ Check if logged in
+    async function isLoggedIn() {
+      try {
+        const res = await fetch('/api/auth/status', { credentials: 'include' });
+        const data = await res.json();
+        return data.loggedIn;
+      } catch {
+        return false;
+      }
+    }
+
+    // ✅ Save chat to history
+    async function saveChatToHistory(userMessage, aiResponse, searchParams = {}) {
+      try {
+        await fetch('/api/chat/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ userMessage, aiResponse, searchParams })
+        });
+      } catch (err) {
+        console.error('Save chat failed:', err);
+      }
+    }
+
+    // ✅ Send message
+    async function send() {
+      const msg = userInput.value.trim();
+      if (!msg || isStreaming) return;
+
+      chatBox.innerHTML += `<div class="user-msg">👤 You: ${msg}</div>\n\n`;
+      userInput.value = '';
+      scrollToBottom();
+
+      const loadingId = 'loading-' + Date.now();
+      chatBox.innerHTML += `<div id="${loadingId}" class="loading">စဉ်းစားနေသည်</div>`;
+      scrollToBottom();
+
+      currentChatResponse = '';
+      isStreaming = true;
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/chat-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg }),
+          credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
+        document.getElementById(loadingId)?.remove();
+        isAtBottom = true;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          currentChatResponse += chunk;
+          chatBox.innerHTML += chunk;
+          if (isAtBottom) {
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'auto' });
+          } else {
+            scrollHint.classList.add('show');
+          }
+        }
+        
+        // ✅ Save to history if logged in
+        if (await isLoggedIn()) {
+          const searchParams = {};
+          const nums = msg.match(/\d+\.?\d*/g);
+          if (nums) {
+            searchParams.targetValue = parseFloat(nums[0]);
+            if (msg.toLowerCase().includes('ho') || msg.toLowerCase().includes('home')) {
+              searchParams.activeSide = 'home';
+            } else if (msg.toLowerCase().includes('ao') || msg.toLowerCase().includes('away')) {
+              searchParams.activeSide = 'away';
+            }
+          }
+          await saveChatToHistory(msg, currentChatResponse, searchParams);
+        }
+
+      } catch (err) {
+        document.getElementById(loadingId)?.remove();
+        chatBox.innerHTML += `\n<div style="color: var(--danger);">❌ Error: ${err.message}</div>\n`;
+      } finally {
+        isStreaming = false;
+        sendBtn.disabled = false;
+        scrollHint.classList.remove('show');
+      }
+    }
+
+    // ✅ Initialize
+    checkAuth();
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
+    
+    // ✅ Focus input on load
+    setTimeout(() => userInput.focus(), 300);
+  </script>
+</body>
+</html>
