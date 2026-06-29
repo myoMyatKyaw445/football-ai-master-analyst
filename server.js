@@ -62,12 +62,23 @@ function toNum(val) {
   return isNaN(n) ? null : n;
 }
 
-async function streamText(text, res, delay = 10) {
-  for (const char of text) {
-    res.write(char);
-    // ✅ Force flush the buffer
-    if (res.flush) res.flush();  
+async function streamText(text, res, delay = 50) {
+  for (let i = 0; i < text.length; i++) {
+    res.write(text[i]);
+    
+    // ✅ Force flush - multiple methods for Render compatibility
+    if (typeof res.flush === 'function') res.flush();
+    if (res.socket && !res.socket.destroyed) {
+      res.socket.uncork?.();
+    }
+    
+    // ✅ Add delay to help with buffering
     await new Promise(resolve => setTimeout(resolve, delay));
+    
+    // ✅ Force empty write every 100 chars to trigger nginx flush
+    if (i % 100 === 0 && i > 0) {
+      res.write('');
+    }
   }
 }
 
@@ -811,6 +822,8 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');                   
     res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('X-Content-Type-Options', 'nosniff');  
+    res.flushHeaders();
     
     // ✅ HANDLE FILE UPLOAD
     if (file) {
