@@ -90,16 +90,19 @@
         const res = await fetch('/api/auth/status', { credentials: 'include' });
         const data = await res.json();
         
-        if (data.loggedIn) {
-          authArea.innerHTML = `
-            <div class="user-info">
-              <img src="${data.user.photo}" alt="${data.user.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=007bff&color=fff'">
-              <span title="${data.user.email}">${data.user.email.split('@')[0]}</span>
-              <button onclick="logout()" class="login-btn secondary">Logout</button>
-              <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
-            </div>
-          `;
-          loadHistory();
+        if (data.loggedIn && data.user) {
+  // ✅ Use name if available, fallback to email prefix
+  const displayName = data.user.name || data.user.email?.split('@')[0] || 'User';
+  
+  authArea.innerHTML = `
+    <div class="user-info">
+      <img src="${data.user.photo || ''}" alt="${displayName}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=007bff&color=fff'">
+      <span title="${data.user.email}" class="user-name">${displayName}</span>
+      <button onclick="logout()" class="login-btn secondary">Logout</button>
+      <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
+    </div>
+  `;
+  loadHistory();
         } else {
           authArea.innerHTML = `
             <a href="/auth/google" class="login-btn" title="Login with Google">
