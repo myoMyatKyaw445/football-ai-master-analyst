@@ -60,7 +60,7 @@ export function setupGoogleLogin(app) {
     resave: false,
     saveUninitialized: false,
     cookie: { 
-      secure: false,  // ✅ Set true for HTTPS
+      secure: process.env.NODE_ENV === 'production',  // ✅ HTTPS only in production
       maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
     }
   }));
@@ -69,13 +69,32 @@ export function setupGoogleLogin(app) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // ✅ Google OAuth Strategy
+  // ✅ Build callback URL - SINGLE SOURCE OF TRUTH
+  const getCallbackURL = () => {
+    // Priority 1: Explicit callback URL
+    if (process.env.GOOGLE_CALLBACK_URL) {
+      return process.env.GOOGLE_CALLBACK_URL;
+    }
+    // Priority 2: Build from FRONTEND_URL
+    if (process.env.FRONTEND_URL) {
+      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, ''); // Remove trailing slash
+      return `${baseUrl}/auth/google/callback`;
+    }
+    // Priority 3: Default for local development
+    return '/auth/google/callback';
+  };
+
+  const callbackURL = getCallbackURL();
+  console.log('🔐 Google OAuth callbackURL:', callbackURL);
+
+  // ✅ Google OAuth Strategy - USE THE SAME callbackURL
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL
+      callbackURL: callbackURL,  // ← SAME variable used here
+      passReqToCallback: true
     },
-    async (accessToken, refreshToken, profile, done) => {
+    async (req, accessToken, refreshToken, profile, done) => {
       try {
         const db = await getDB();
         const now = new Date();
@@ -87,9 +106,9 @@ export function setupGoogleLogin(app) {
           // ✅ NEW USER - First login
           user = {
             googleId: profile.id,
-            email: profile.emails[0].value,
-            name: profile.displayName,
-            photo: profile.photos[0].value,
+            email: profile.emails?.[0]?.value || '',
+            name: profile.displayName || 'User',
+            photo: profile.photos?.[0]?.value || '',
             chatHistory: [],
             uploadedFiles: [],
             firstLogin: now,
@@ -114,6 +133,7 @@ export function setupGoogleLogin(app) {
         }
         
         // ✅ Create login session record
+        const userAgent = req.headers['user-agent'] || '';
         await db.collection('login_sessions').insertOne({
           userId: user._id,
           googleId: profile.id,
@@ -121,11 +141,11 @@ export function setupGoogleLogin(app) {
           loginTime: now,
           logoutTime: null,
           duration: null,
-          ipAddress: 'unknown',
-          userAgent: 'unknown',
-          device: getDeviceType('unknown'),
-          browser: getBrowser('unknown'),
-          os: getOS('unknown'),
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+          userAgent: userAgent,
+          device: getDeviceType(userAgent),
+          browser: getBrowser(userAgent),
+          os: getOS(userAgent),
           isActive: true,
           status: 'active',
           createdAt: now
@@ -140,26 +160,39 @@ export function setupGoogleLogin(app) {
     }
   ));
 
-  passport.serializeUser((user, done) => done(null, user));
-  passport.deserializeUser((user, done) => done(null, user));
+  // ✅ Serialize user - save only email to session (not full object)
+  passport.serializeUser((user, done) => {
+    done(null, user.email);
+  });
+
+  // ✅ Deserialize user - fetch minimal user info from email
+  passport.deserializeUser(async (email, done) => {
+    try {
+      const user = { email };
+      done(null, user);
+    } catch (err) {
+      done(err, null);
+    }
+  });
 
   // ============================================
   // 🔐 AUTH ROUTES
   // ============================================
 
-  // ✅ Google Login
+  // ✅ Google Login - USE THE SAME callbackURL
   app.get('/auth/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    callbackURL: process.env.FRONTEND_URL 
-      ? `${process.env.FRONTEND_URL}/auth/google/callback`
-      : '/auth/google/callback'
-  })
-);
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      callbackURL: callbackURL  // ← SAME variable used here
+    })
+  );
 
   // ✅ Google Callback
   app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/' }),
+    passport.authenticate('google', { 
+      failureRedirect: '/',
+      failureMessage: true
+    }),
     (req, res) => {
       res.redirect('/');
     }
@@ -171,9 +204,9 @@ export function setupGoogleLogin(app) {
       res.json({
         loggedIn: true,
         user: {
-          email: req.user.email,
-          name: req.user.name,
-          photo: req.user.photo
+          email: req.user?.email || '',
+          name: req.user?.name || '',
+          photo: req.user?.photo || ''
         }
       });
     } else {
@@ -183,26 +216,33 @@ export function setupGoogleLogin(app) {
 
   // ✅ Logout
   app.post('/api/auth/logout', async (req, res) => {
-    if (req.user) {
-      const db = await getDB();
-      await db.collection('login_sessions').updateOne(
-        { 
-          googleId: req.user.googleId,
-          isActive: true,
-          logoutTime: null
-        },
-        {
-          $set: {
-            logoutTime: new Date(),
-            isActive: false,
-            status: 'logout'
+    if (req.user?.googleId) {
+      try {
+        const db = await getDB();
+        await db.collection('login_sessions').updateOne(
+          { 
+            googleId: req.user.googleId,
+            isActive: true,
+            logoutTime: null
+          },
+          {
+            $set: {
+              logoutTime: new Date(),
+              isActive: false,
+              status: 'logout'
+            }
           }
-        }
-      );
+        );
+      } catch (err) {
+        console.error('❌ Logout session update error:', err.message);
+      }
     }
     
     req.logout((err) => {
-      if (err) return res.status(500).json({ error: 'Logout failed' });
+      if (err) {
+        console.error('❌ Logout error:', err.message);
+        return res.status(500).json({ error: 'Logout failed' });
+      }
       res.json({ success: true });
     });
   });
@@ -214,7 +254,7 @@ export function setupGoogleLogin(app) {
   // ✅ Save Chat to History
   app.post('/api/chat/save', async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
+      if (!req.isAuthenticated() || !req.user?.email) {
         return res.status(401).json({ error: 'Not logged in' });
       }
       
@@ -222,7 +262,7 @@ export function setupGoogleLogin(app) {
       const db = await getDB();
       
       await db.collection('users').updateOne(
-        { googleId: req.user.googleId },
+        { email: req.user.email },
         {
           $push: {
             chatHistory: {
@@ -248,13 +288,13 @@ export function setupGoogleLogin(app) {
   // ✅ Load Chat History
   app.get('/api/chat/history', async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
+      if (!req.isAuthenticated() || !req.user?.email) {
         return res.json({ history: [] });
       }
       
       const db = await getDB();
       const user = await db.collection('users').findOne(
-        { googleId: req.user.googleId },
+        { email: req.user.email },
         { projection: { chatHistory: 1 } }
       );
       
@@ -270,13 +310,13 @@ export function setupGoogleLogin(app) {
   // ✅ Clear Chat History
   app.delete('/api/chat/history', async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
+      if (!req.isAuthenticated() || !req.user?.email) {
         return res.status(401).json({ error: 'Not logged in' });
       }
       
       const db = await getDB();
       await db.collection('users').updateOne(
-        { googleId: req.user.googleId },
+        { email: req.user.email },
         { $set: { chatHistory: [] } }
       );
       
@@ -349,25 +389,30 @@ export function setupGoogleLogin(app) {
 
   // ✅ Update user activity on each request
   app.use(async (req, res, next) => {
-    if (req.isAuthenticated()) {
-      const db = await getDB();
-      await db.collection('users').updateOne(
-        { googleId: req.user.googleId },
-        { $set: { lastActive: new Date() } }
-      );
+    if (req.isAuthenticated() && req.user?.email) {
+      try {
+        const db = await getDB();
+        await db.collection('users').updateOne(
+          { email: req.user.email },
+          { $set: { lastActive: new Date() } }
+        );
+      } catch (err) {
+        // Silently fail - don't break the request
+      }
     }
     next();
   });
 
   console.log('🔐 Google Login module initialized successfully!');
+  console.log('🔐 callbackURL:', callbackURL);
 }
 
 // ✅ Export helper functions for use in server.js
-export async function saveChatToHistory(googleId, userMessage, aiResponse, searchParams = {}) {
+export async function saveChatToHistory(email, userMessage, aiResponse, searchParams = {}) {
   try {
     const db = await getDB();
     await db.collection('users').updateOne(
-      { googleId },
+      { email },
       {
         $push: {
           chatHistory: {
@@ -388,11 +433,11 @@ export async function saveChatToHistory(googleId, userMessage, aiResponse, searc
   }
 }
 
-export async function getUserChatHistory(googleId, limit = 50) {
+export async function getUserChatHistory(email, limit = 50) {
   try {
     const db = await getDB();
     const user = await db.collection('users').findOne(
-      { googleId },
+      { email },
       { projection: { chatHistory: 1 } }
     );
     return user?.chatHistory?.slice(-limit).reverse() || [];
