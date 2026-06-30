@@ -56,14 +56,16 @@ function getOS(userAgent) {
 export function setupGoogleLogin(app) {
   // ✅ Session Configuration
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-      secure: process.env.NODE_ENV === 'production',  // ✅ HTTPS only in production
-      maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
-    }
-  }));
+  secret: process.env.SESSION_SECRET || 'football-ai-analyst-super-secret-key-min-32-chars-long',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',  // ✅ HTTPS only
+    httpOnly: true,                                   // ✅ Prevent XSS
+    sameSite: 'lax',                                  // ✅ CSRF protection + cross-site login
+    maxAge: 30 * 24 * 60 * 60 * 1000                  // 30 days
+  }
+}));
 
   // ✅ Passport Configuration
   app.use(passport.initialize());
