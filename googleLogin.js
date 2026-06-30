@@ -54,18 +54,21 @@ function getOS(userAgent) {
 
 // ✅ Initialize Google Login
 export function setupGoogleLogin(app) {
-  // ✅ Session Configuration
+  // ✅ TRUST PROXY - CRITICAL for Railway (must be BEFORE session middleware)
+  app.set('trust proxy', 1);
+  
+  // ✅ Session Configuration - Fixed for Railway HTTPS + OAuth
   app.use(session({
-  secret: process.env.SESSION_SECRET || 'football-ai-analyst-super-secret-key-min-32-chars-long',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',  // ✅ HTTPS only
-    httpOnly: true,                                   // ✅ Prevent XSS
-    sameSite: 'lax',                                  // ✅ CSRF protection + cross-site login
-    maxAge: 30 * 24 * 60 * 60 * 1000                  // 30 days
-  }
-}));
+    secret: process.env.SESSION_SECRET || 'football-ai-chat-2026-secure-key-xyz789!@#$%^&*()',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: true,              // ✅ ALWAYS true for Railway (HTTPS required)
+      httpOnly: true,            // ✅ Prevent XSS
+      sameSite: 'none',          // ✅ Required for OAuth cross-site redirect
+      maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
+    }
+  }));
 
   // ✅ Passport Configuration
   app.use(passport.initialize());
@@ -162,20 +165,20 @@ export function setupGoogleLogin(app) {
     }
   ));
 
-  // ✅ Serialize user - save only email to session (not full object)
+  // ✅ Serialize user - save FULL user data to session (name, photo included)
   passport.serializeUser((user, done) => {
-  done(null, {
-    email: user.email,
-    name: user.name,
-    photo: user.photo,
-    googleId: user.googleId
+    done(null, {
+      email: user.email,
+      name: user.name,
+      photo: user.photo,
+      googleId: user.googleId
+    });
   });
-});
 
-  // ✅ Deserialize user - fetch minimal user info from email
+  // ✅ Deserialize user - return the same data (no DB query needed)
   passport.deserializeUser((obj, done) => {
-  done(null, obj);
-});
+    done(null, obj);
+  });
 
   // ============================================
   // 🔐 AUTH ROUTES
