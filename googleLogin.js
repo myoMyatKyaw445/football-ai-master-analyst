@@ -162,18 +162,18 @@ export function setupGoogleLogin(app) {
 
   // ✅ Serialize user - save only email to session (not full object)
   passport.serializeUser((user, done) => {
-    done(null, user.email);
+  done(null, {
+    email: user.email,
+    name: user.name,
+    photo: user.photo,
+    googleId: user.googleId
   });
+});
 
   // ✅ Deserialize user - fetch minimal user info from email
-  passport.deserializeUser(async (email, done) => {
-    try {
-      const user = { email };
-      done(null, user);
-    } catch (err) {
-      done(err, null);
-    }
-  });
+  passport.deserializeUser((obj, done) => {
+  done(null, obj);
+});
 
   // ============================================
   // 🔐 AUTH ROUTES
