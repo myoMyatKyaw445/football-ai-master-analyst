@@ -149,8 +149,13 @@ export function setupGoogleLogin(app) {
 
   // ✅ Google Login
   app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-  );
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    callbackURL: process.env.FRONTEND_URL 
+      ? `${process.env.FRONTEND_URL}/auth/google/callback`
+      : '/auth/google/callback'
+  })
+);
 
   // ✅ Google Callback
   app.get('/auth/google/callback',
