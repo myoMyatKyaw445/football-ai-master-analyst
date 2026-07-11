@@ -2,7 +2,7 @@
 // Features: File Upload, Team Search, Number Search, Auto-Detect Lower Odds, 
 //           Sort by Distance + Deduplication + Priority CO Sorting, Progressive Pagination, 
 //           Google Login, Chat History, AI Predictions, Enhanced Market Odds Analysis,
-//           Odds Range Analysis (CO vs Target Range), User Tracking
+//           Odds Range Analysis (CO vs Target Range), User Tracking, MASTER ANALYSIS
 
 import express from 'express';
 import cors from 'cors';
@@ -691,6 +691,250 @@ function generateOddsRangeAnalysis(uploadedMatch, historicalMatches, activeSide)
   }
 }
 
+// ✅ MASTER ANALYSIS: Target Side + CO Selection + CO Condition (3 Filters)
+function generateMasterAnalysis(uploadedMatch, historicalMatches, activeSide) {
+  try {
+    // ✅ Filter matches with complete data
+    const matchesWithFullData = historicalMatches.filter(h => 
+      h.m.fthgActual !== null && h.m.ftagActual !== null &&
+      h.m.coh !== null && h.m.coa !== null &&
+      h.m.homeOverallOdds !== null && h.m.homeAdjustedDecimal !== null &&
+      h.m.awayOverallOdds !== null && h.m.awayAdjustedDecimal !== null
+    );
+    
+    if (matchesWithFullData.length < 3) {
+      return {
+        summary: "⚠️ Master Analysis အတွက် ဒေတာ မလုံလောက်ပါ (လိုအပ်ချက်: အနည်းဆုံး ၃ ပွဲ)",
+        matchingMatches: [],
+        stats: null,
+        confidence: 0
+      };
+    }
+    
+    // ✅ STEP 1: Determine Target Side (which side has lower odds)
+    const currentHomeMin = Math.min(uploadedMatch.homeOverallOdds, uploadedMatch.homeAdjustedDecimal);
+    const currentAwayMin = Math.min(uploadedMatch.awayOverallOdds, uploadedMatch.awayAdjustedDecimal);
+    const targetSide = currentHomeMin <= currentAwayMin ? 'home' : 'away';
+    const targetLabel = targetSide === 'home' ? 'HO/HA' : 'AO/AA';
+    
+    const currentTargetMin = targetSide === 'home' ? currentHomeMin : currentAwayMin;
+    const currentTargetMax = targetSide === 'home' 
+      ? Math.max(uploadedMatch.homeOverallOdds, uploadedMatch.homeAdjustedDecimal)
+      : Math.max(uploadedMatch.awayOverallOdds, uploadedMatch.awayAdjustedDecimal);
+    
+    // ✅ STEP 2: Determine Selected CO (which CO is lower)
+    const selectedCO = uploadedMatch.coh <= uploadedMatch.coa ? 'COH' : 'COA';
+    const marketOdds = selectedCO === 'COH' ? uploadedMatch.coh : uploadedMatch.coa;
+    
+    // ✅ STEP 3: Determine CO Condition (within/above/below)
+    const THRESHOLD = 0.05;
+    let coCondition;
+    if (marketOdds >= currentTargetMin - 0.001 && marketOdds <= currentTargetMax + 0.001) {
+      coCondition = 'within';
+    } else if (marketOdds > currentTargetMax + THRESHOLD) {
+      coCondition = 'above';
+    } else if (marketOdds < currentTargetMin - THRESHOLD) {
+      coCondition = 'below';
+    } else {
+      coCondition = 'within';
+    }
+    
+    // ✅ STEP 4: Filter Historical Matches (ALL 3 conditions must match)
+    const matchingMatches = matchesWithFullData.filter(h => {
+      // Condition A: Same Target Side (which side has lower odds)
+      const hHomeMin = Math.min(h.m.homeOverallOdds, h.m.homeAdjustedDecimal);
+      const hAwayMin = Math.min(h.m.awayOverallOdds, h.m.awayAdjustedDecimal);
+      const hTargetSide = hHomeMin <= hAwayMin ? 'home' : 'away';
+      if (hTargetSide !== targetSide) return false; // ← Must have same target side
+      
+      // Condition B: Same CO Selection (which CO is lower)
+      const hCOH = h.m.coh;
+      const hCOA = h.m.coa;
+      if (hCOH === null || hCOA === null) return false;
+      const hSelectedCO = hCOH <= hCOA ? 'COH' : 'COA';
+      if (hSelectedCO !== selectedCO) return false; // ← Must have same CO selection
+      
+      // Condition C: Same CO Condition (within/above/below)
+      const hMarketOdds = selectedCO === 'COH' ? hCOH : hCOA;
+      const hTargetMin = targetSide === 'home' ? hHomeMin : hAwayMin;
+      const hTargetMax = targetSide === 'home' 
+        ? Math.max(h.m.homeOverallOdds, h.m.homeAdjustedDecimal)
+        : Math.max(h.m.awayOverallOdds, h.m.awayAdjustedDecimal);
+      
+      let hCondition;
+      if (hMarketOdds >= hTargetMin - 0.001 && hMarketOdds <= hTargetMax + 0.001) {
+        hCondition = 'within';
+      } else if (hMarketOdds > hTargetMax + THRESHOLD) {
+        hCondition = 'above';
+      } else if (hMarketOdds < hTargetMin - THRESHOLD) {
+        hCondition = 'below';
+      } else {
+        hCondition = 'within';
+      }
+      
+      if (hCondition !== coCondition) return false; // ← Must have same condition
+      
+      // ✅ All 3 conditions met
+      return true;
+    });
+    
+    if (matchingMatches.length === 0) {
+      const condLabel = coCondition === 'within' ? 'ကြားထဲ' : coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း';
+      return {
+        summary: `⚠️ ${targetLabel} + ${selectedCO} (${condLabel}) အခြေအနေနဲ့ ကိုက်ညီတဲ့ historical match မတွေ့ရပါ။`,
+        matchingMatches: [],
+        stats: null,
+        confidence: 0
+      };
+    }
+    
+    // ✅ Calculate detailed statistics
+    let homeWins = 0, awayWins = 0, draws = 0;
+    let homeWinBy1 = 0, homeWinBy2Plus = 0, awayWinBy1 = 0, awayWinBy2Plus = 0;
+    let homeGoals = 0, awayGoals = 0;
+    let resultsList = [];
+    
+    matchingMatches.forEach(h => {
+      const homeScore = h.m.fthgActual;
+      const awayScore = h.m.ftagActual;
+      const goalDiff = homeScore - awayScore;
+      
+      homeGoals += homeScore;
+      awayGoals += awayScore;
+      
+      let result, winMargin;
+      if (homeScore > awayScore) {
+        homeWins++;
+        winMargin = homeScore - awayScore;
+        if (winMargin === 1) homeWinBy1++;
+        else if (winMargin >= 2) homeWinBy2Plus++;
+        result = 'home';
+      } else if (awayScore > homeScore) {
+        awayWins++;
+        winMargin = awayScore - homeScore;
+        if (winMargin === 1) awayWinBy1++;
+        else if (winMargin >= 2) awayWinBy2Plus++;
+        result = 'away';
+      } else {
+        draws++;
+        result = 'draw';
+      }
+      
+      const hMarketOdds = selectedCO === 'COH' ? h.m.coh : h.m.coa;
+      const hTargetMax = targetSide === 'home'
+        ? Math.max(h.m.homeOverallOdds, h.m.homeAdjustedDecimal)
+        : Math.max(h.m.awayOverallOdds, h.m.awayAdjustedDecimal);
+      
+      resultsList.push({
+        teams: h.m.teams,
+        date: h.m.date,
+        result: `${homeScore}-${awayScore}`,
+        goalDiff,
+        odds: {
+          selectedCO: hMarketOdds,
+          selectedCODiff: (hMarketOdds - hTargetMax).toFixed(2)
+        }
+      });
+    });
+    
+    const total = matchingMatches.length;
+    const homeWinRate = ((homeWins / total) * 100).toFixed(1);
+    const awayWinRate = ((awayWins / total) * 100).toFixed(1);
+    const drawRate = ((draws / total) * 100).toFixed(1);
+    const avgHomeGoals = (homeGoals / total).toFixed(2);
+    const avgAwayGoals = (awayGoals / total).toFixed(2);
+    const avgGoalDiff = ((homeGoals - awayGoals) / total).toFixed(2);
+    
+    // ✅ Calculate confidence
+    let confidence = 50;
+    if (total >= 20) confidence += 25;
+    else if (total >= 10) confidence += 15;
+    else if (total >= 5) confidence += 5;
+    
+    const maxRate = Math.max(parseFloat(homeWinRate), parseFloat(awayWinRate), parseFloat(drawRate));
+    if (maxRate >= 70) confidence += 20;
+    else if (maxRate >= 55) confidence += 10;
+    confidence = Math.min(95, confidence);
+    
+    // ✅ Generate recommendation
+    let recommendation;
+    const condLabel = coCondition === 'within' ? 'ကြေးတူညီ' : coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း';
+    
+    if (parseFloat(homeWinRate) >= 60) {
+      recommendation = `🏆 အိမ်ရှင် အနိုင် (${homeWinRate}%) - ${condLabel} တွင် အိမ်ရှင် နိုင်နှုန်း မြင့်`;
+    } else if (parseFloat(awayWinRate) >= 60) {
+      recommendation = `🏆 အဝေး အနိုင် (${awayWinRate}%) - ${condLabel} တွင် အဝေး နိုင်နှုန်း မြင့်`;
+    } else if (parseFloat(drawRate) >= 45) {
+      recommendation = `🤝 သရေ (${drawRate}%) - ${condLabel} တွင် သရေ ဖြစ်နှုန်း မြင့်`;
+    } else if (homeWinBy2Plus > awayWinBy2Plus + draws) {
+      recommendation = `⚠️ အိမ်ရှင် ဂိုးပြတ်နိုင်ဖို့ ခက် - ဂိုး ၂ ဂိုးပြတ် နိုင်ခဲ့ပွဲ နည်း`;
+    } else {
+      recommendation = `⚖️ ရလဒ်များ ကွဲပြား - အခြား factors များကို ထည့်သွင်းစဉ်းစားပါ`;
+    }
+    
+    // ✅ Generate summary
+    const summary = `
+🎯 MASTER ANALYSIS - ${targetLabel} + ${selectedCO} (${coCondition === 'within' ? 'ကြားထဲ' : coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း'})
+═══════════════════════════════════════
+• Target Side: ${targetLabel} (နည်းသောကြေး)
+• Selected CO: ${selectedCO} (နည်းသောကြေး) [${marketOdds}]
+• CO Condition: ${coCondition === 'within' ? 'ကြားထဲမှာ' : coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း'}
+• ကိုက်ညီသော ပွဲအရေအတွက်: ${total} ပွဲ
+
+📊 ရလဒ် ဖြန့်ဝေမှု:
+• 🏠 အိမ်ရှင် နိုင်: ${homeWins} ပွဲ (${homeWinRate}%)
+• ✈️ အဝေး နိုင်: ${awayWins} ပွဲ (${awayWinRate}%)
+• 🤝 သရေ: ${draws} ပွဲ (${drawRate}%)
+
+⚽ ဂိုး အသေးစိတ်:
+• ပျမ်းမျှ ဂိုး: အိမ်ရှင် ${avgHomeGoals} vs အဝေး ${avgAwayGoals}
+• ပျမ်းမျှ ဂိုးကွာခြားချက်: ${avgGoalDiff} (${parseFloat(avgGoalDiff) > 0 ? 'အိမ်ရှင်' : 'အဝေး'} အတွက်)
+
+🎯 ဂိုးပြတ်နိုင်မှု:
+• အိမ်ရှင် ၁ ဂိုးပြတ် နိုင်: ${homeWinBy1} ပွဲ
+• အိမ်ရှင် ၂+ ဂိုးပြတ် နိုင်: ${homeWinBy2Plus} ပွဲ
+• အဝေး ၁ ဂိုးပြတ် နိုင်: ${awayWinBy1} ပွဲ
+• အဝေး ၂+ ဂိုးပြတ် နိုင်: ${awayWinBy2Plus} ပွဲ
+
+🔍 နမူနာ ရလဒ်များ (နောက်ဆုံး ၅ ပွဲ):
+${resultsList.slice(0, 5).map((r, i) => `   ${i+1}. ${r.teams}: ${r.result} | ${selectedCO} diff: ${r.odds.selectedCODiff}`).join('\n')}
+
+🎯 AI Recommendation: ${recommendation}
+📊 Confidence: ${confidence.toFixed(1)}%
+    `.trim();
+    
+    return {
+      summary,
+      targetSide,
+      selectedCO,
+      coCondition,
+      matchingMatches: resultsList,
+      stats: {
+        total,
+        homeWins, awayWins, draws,
+        homeWinRate, awayWinRate, drawRate,
+        avgHomeGoals, avgAwayGoals, avgGoalDiff,
+        homeWinBy1, homeWinBy2Plus, awayWinBy1, awayWinBy2Plus
+      },
+      confidence: confidence.toFixed(1),
+      recommendation
+    };
+    
+  } catch (err) {
+    console.error('❌ Master analysis error:', err.message);
+    return {
+      summary: "⚠️ Master Analysis ထုတ်ယူရာတွင် အမှားဖြစ်ပွားခဲ့သည်။",
+      targetSide: null,
+      selectedCO: null,
+      coCondition: null,
+      matchingMatches: [],
+      stats: null,
+      confidence: 0,
+      recommendation: "Error: " + err.message
+    };
+  }
+}
+
 // ✅ Stream basic prediction
 async function streamPrediction(prediction, res, delay = 15) {
   let output = `\n`;
@@ -806,6 +1050,50 @@ async function streamOddsRangeAnalysis(analysis, res, delay = 12) {
   }
   
   output += `\n💡 ဤ analysis သည် CO vs Target Range ဆက်နွယ်မှုအပေါ် အခြေခံထားခြင်း ဖြစ်ပြီး\n`;
+  output += `   အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
+  output += `═══════════════════════════════════════\n`;
+  
+  await streamText(output, res, delay);
+}
+
+// ✅ Stream Master Analysis - NEW FEATURE
+async function streamMasterAnalysis(analysis, res, delay = 12) {
+  let output = `\n`;
+  output += `═══════════════════════════════════════\n`;
+  output += `🎯 MASTER ANALYSIS - အသေးစိတ် CO Condition\n`;
+  output += `═══════════════════════════════════════\n\n`;
+  
+  output += `${analysis.summary}\n\n`;
+  
+  if (analysis.matchingMatches && analysis.matchingMatches.length > 0) {
+    output += `📋 အပြည့်အစုံ ရလဒ်များ (ပွဲ ${analysis.matchingMatches.length} ပွဲ):\n`;
+    output += `─────────────────────────────\n`;
+    
+    analysis.matchingMatches.forEach((m, i) => {
+      const winType = m.goalDiff > 0 ? '🏠' : m.goalDiff < 0 ? '✈️' : '🤝';
+      const margin = Math.abs(m.goalDiff) >= 2 ? ' (2+ ဂိုးပြတ်)' : m.goalDiff !== 0 ? ' (1 ဂိုးပြတ်)' : '';
+      
+      output += `${i + 1}. ${m.teams}\n`;
+      output += `   📅 ${m.date || '-'} | ${winType} RESULT: ${m.result}${margin}\n`;
+      output += `   📊 ${analysis.selectedCO}: ${m.odds.selectedCO.toFixed(2)} | Diff: ${m.odds.selectedCODiff}\n`;
+      output += `─────────────────────────────\n`;
+    });
+  }
+  
+  if (analysis.stats) {
+    output += `\n📈 အနှစ်ချုပ် Statistics:\n`;
+    output += `• စုစုပေါင်း ပွဲ: ${analysis.stats.total}\n`;
+    output += `• 🏠 အိမ်ရှင် နိုင်: ${analysis.stats.homeWins} (${analysis.stats.homeWinRate}%)\n`;
+    output += `• ✈️ အဝေး နိုင်: ${analysis.stats.awayWins} (${analysis.stats.awayWinRate}%)\n`;
+    output += `• 🤝 သရေ: ${analysis.stats.draws} (${analysis.stats.drawRate}%)\n`;
+    output += `• ⚽ အိမ်ရှင် ၁ ဂိုးပြတ်: ${analysis.stats.homeWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.homeWinBy2Plus}\n`;
+    output += `• ⚽ အဝေး ၁ ဂိုးပြတ်: ${analysis.stats.awayWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.awayWinBy2Plus}\n`;
+  }
+  
+  const condLabel = analysis.coCondition === 'within' ? 'ကြေးတူညီ' : 
+                   analysis.coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း';
+  output += `\n💡 ဤ Master Analysis သည် ${analysis.targetSide === 'home' ? 'HO/HA' : 'AO/AA'} + ${analysis.selectedCO} (${condLabel}) အခြေအနေအတွက်\n`;
+  output += `   Historical matches ${analysis.stats?.total || 0} ပွဲကို အခြေခံထားခြင်း ဖြစ်သည်။\n`;
   output += `   အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
   output += `═══════════════════════════════════════\n`;
   
@@ -1348,6 +1636,13 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
       if (rangeAnalysis.condition) {
         await streamOddsRangeAnalysis(rangeAnalysis, res, 12);
       }
+      
+      // ✅ 9️⃣ MASTER ANALYSIS - Only on first page (NEW!)
+      console.log('🎯 Generating Master Analysis...');
+      const masterAnalysis = generateMasterAnalysis(matchedUploadMatch, validMatches, activeSide);
+      if (masterAnalysis.confidence > 0) {
+        await streamMasterAnalysis(masterAnalysis, res, 12);
+      }
     }
     // ✅ On pagination pages: Skip all analysis, just show matches
     
@@ -1365,5 +1660,5 @@ const PORT = process.env.PORT || 3000;
 initDB().then(() => app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
   console.log(`🔐 Google OAuth enabled`);
-  console.log(`🧠 AI Prediction + Market Odds + Odds Range + Priority CO Sorting active`);
+  console.log(`🧠 AI Prediction + Market Odds + Odds Range + Priority CO Sorting + MASTER ANALYSIS active`);
 }));
