@@ -4,6 +4,7 @@
 //           Google Login, Chat History, AI Predictions, Enhanced Market Odds Analysis,
 //           Odds Range Analysis (CO vs Target Range), User Tracking, MASTER ANALYSIS
 //           ✅ FIXED: Excel data persists in MongoDB for "List Matches" & "More" to work on Vercel/Localhost
+//           ✅ NEW: Search Session Persistence for Vercel Timeout "More" functionality
 
 import express from 'express';
 import cors from 'cors';
@@ -126,6 +127,45 @@ function isListMatchesRequest(msg) {
     'which team', 'ဘယ်အသင်း', 'ပွဲစာရင်း', 'match list', 'ရှိတဲ့ပွဲ'
   ];
   return keywords.some(k => lowerMsg.includes(k));
+}
+
+// ✅ Search Session Management for Vercel Timeout Handling
+async function saveSearchSession(sessionId, searchData) {
+  try {
+    await db.collection('search_sessions').updateOne(
+      { sessionId },
+      { 
+        $set: { 
+          ...searchData, 
+          updatedAt: new Date() 
+        },
+        $setOnInsert: { 
+          createdAt: new Date() 
+        }
+      },
+      { upsert: true }
+    );
+    console.log(`✅ Search session saved: ${sessionId}`);
+  } catch (err) {
+    console.error('❌ Error saving search session:', err.message);
+  }
+}
+
+async function getSearchSession(sessionId) {
+  try {
+    const session = await db.collection('search_sessions').findOne({ sessionId });
+    if (session) {
+      console.log(`✅ Search session loaded: ${sessionId}`);
+    }
+    return session;
+  } catch (err) {
+    console.error('❌ Error loading search session:', err.message);
+    return null;
+  }
+}
+
+function generateSessionId() {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // ✅ AI Prediction Engine (Original Logic Preserved)
@@ -1311,8 +1351,97 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
     console.log('📝 Message:', message);
     
     const lowerMsg = message ? message.toLowerCase().trim() : "";
-    const isNextRequest = lowerMsg === 'more' || lowerMsg === 'next' || lowerMsg === 'ထပ်' || lowerMsg === 'ဆက်';
     const isListRequest = isListMatchesRequest(message);
+    
+    // ✅ Handle "More" request with session ID (Fallback to latest session if no ID provided)
+    const isNextRequest = lowerMsg === 'more' || lowerMsg === 'next' || lowerMsg === 'ထပ်' || lowerMsg === 'ဆက်' || lowerMsg.startsWith('more session_');
+
+    if (isNextRequest) {
+      let sessionId = null;
+      const sessionIdMatch = message.match(/session_\d+_\w+/i);
+      if (sessionIdMatch) {
+        sessionId = sessionIdMatch[0];
+      } else {
+        // Fallback: get the most recent session
+        const latestSession = await db.collection('search_sessions').findOne({}, { sort: { updatedAt: -1 } });
+        if (latestSession) {
+          sessionId = latestSession.sessionId;
+        }
+      }
+      
+      if (sessionId) {
+        const session = await getSearchSession(sessionId);
+        if (session) {
+          // Restore state from session
+          searchKey = session.searchKey;
+          activeSide = session.activeSide;
+          targets = session.targets;
+          currentCOCondition = session.currentCOCondition;
+          matchedUploadMatch = session.matchedUploadMatch;
+          useUploadedData = session.useUploadedData;
+          
+          const nextPage = session.currentPage + 1;
+          const PAGE_SIZE = 7;
+          const startIndex = nextPage * PAGE_SIZE;
+          
+          // Fetch matches from DB
+          const allMatches = await db.collection('matches').find({ 
+            match_id: { $in: session.validMatchIds } 
+          }).toArray();
+          
+          // Sort matches by original order in validMatchIds
+          const matchMap = new Map(allMatches.map(m => [m.match_id, m]));
+          const sortedMatches = session.validMatchIds.map(id => matchMap.get(id)).filter(m => m);
+          
+          const pageMatches = sortedMatches.slice(startIndex, startIndex + PAGE_SIZE);
+          
+          if (pageMatches.length === 0) {
+            await streamText(`\n✅ ပြသရန် ပွဲအားလုံး ကုန်ဆုံးပါပြီ။\n\n`, res, 10);
+            res.end();
+            return;
+          }
+          
+          // Stream matches
+          for (let i = 0; i < pageMatches.length; i++) {
+            const m = pageMatches[i];
+            const matchNumber = startIndex + i + 1;
+            
+            let matchOutput = `\n`;
+            matchOutput += `🏆 Match ${matchNumber} - ${m["teams"] || 'Unknown'}\n`;
+            matchOutput += `📅 ${m["date"] || '-'} | ${m["context"] || '-'} | Week ${m["week"] || '-'}\n`;
+            matchOutput += `🏟️ ${m["homeTeam"] || '-'} vs ${m["awayTeam"] || '-'}\n`;
+            matchOutput += `📊 Odds: HO:${m["homeOverallOdds"] ?? '-'} DO:${m["drawOverallOdds"] ?? '-'} AO:${m["awayOverallOdds"] ?? '-'}\n`;
+            matchOutput += `📊 Adj: HA:${m["homeAdjustedDecimal"] ?? '-'} DA:${m["drawAdjustedDecimal"] ?? '-'} AA:${m["awayAdjustedDecimal"] ?? '-'}\n`;
+            matchOutput += `📊 Market: COH:${m["coh"] ?? '-'} COD:${m["cod"] ?? '-'} COA:${m["coa"] ?? '-'}\n`;
+            matchOutput += `✅ RESULT: ${m["fthgActual"] ?? '?'} - ${m["ftagActual"] ?? '?'}\n`;
+            matchOutput += `─────────────────────────────\n`;
+            
+            await streamText(matchOutput, res, 10);
+          }
+          
+          // Update session page
+          await saveSearchSession(sessionId, { ...session, currentPage: nextPage });
+          
+          const remainingMatches = session.totalMatches - (startIndex + PAGE_SIZE);
+          if (remainingMatches > 0) {
+            await streamText(`\n💡 ဆက်ကြည့်လိုလျှင် "More" သို့မဟုတ် "More session_${sessionId}" လို့ ပို့ပေးပါ။ (Remaining: ${remainingMatches})\n\n`, res, 10);
+          } else {
+            await streamText(`\n✅ ပြသရန် ပွဲအားလုံး ကုန်ဆုံးပါပြီ။\n\n`, res, 10);
+          }
+          
+          res.end();
+          return;
+        } else {
+           await streamText(`\n❌ Session မတွေ့ရပါ။ အသစ်ရှာဖွေပါ။\n\n`, res, 10);
+           res.end();
+           return;
+        }
+      } else {
+         await streamText(`\n❌ Session ID မပါဝင်ပါ။ "More session_xxx" ဟု ရိုက်ထည့်ပေးပါ သို့မဟုတ် အသစ်ပြန်ရှာပါ။\n\n`, res, 10);
+         res.end();
+         return;
+      }
+    }
 
     // ✅ FETCH FROM DB IF LIST REQUEST OR SEARCHING FOR A TEAM
     if (isListRequest || (!isNextRequest && message)) {
@@ -1494,7 +1623,7 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
       return true;
     });
     
-     currentCOCondition = 'unknown';
+    currentCOCondition = 'unknown'; // ✅ FIXED: Removed duplicate 'let' declaration
     if (matchedUploadMatch && useUploadedData) {
       if (activeSide === 'home') {
         const ho = matchedUploadMatch.homeOverallOdds;
@@ -1566,6 +1695,49 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
     
     console.log(`📊 Found ${validMatches.length} unique historical matches`);
     console.log(`📊 Sorted by: CO condition match → distance → date`);
+    
+    // ✅ Save search session to DB for "More" functionality
+    const validMatchIds = validMatches.map(s => s.m.match_id);
+    const sessionId = generateSessionId();
+    
+    await saveSearchSession(sessionId, {
+      sessionId,
+      searchKey,
+      activeSide,
+      targets,
+      currentCOCondition,
+      matchedUploadMatch: matchedUploadMatch ? {
+        homeTeam: matchedUploadMatch.homeTeam,
+        awayTeam: matchedUploadMatch.awayTeam,
+        homeOverallOdds: matchedUploadMatch.homeOverallOdds,
+        awayOverallOdds: matchedUploadMatch.awayOverallOdds,
+        homeAdjustedDecimal: matchedUploadMatch.homeAdjustedDecimal,
+        awayAdjustedDecimal: matchedUploadMatch.awayAdjustedDecimal,
+        coh: matchedUploadMatch.coh,
+        cod: matchedUploadMatch.cod,
+        coa: matchedUploadMatch.coa,
+        homeWinProbability: matchedUploadMatch.homeWinProbability,
+        drawProbability: matchedUploadMatch.drawProbability,
+        awayWinProbability: matchedUploadMatch.awayWinProbability,
+        homeLast6Probability: matchedUploadMatch.homeLast6Probability,
+        drawLast6Probability: matchedUploadMatch.drawLast6Probability,
+        awayLast6Probability: matchedUploadMatch.awayLast6Probability,
+        homeWinRate: matchedUploadMatch.homeWinRate,
+        drawRate: matchedUploadMatch.drawRate,
+        awayWinRate: matchedUploadMatch.awayWinRate,
+        scoringRate: matchedUploadMatch.scoringRate,
+        homeLast6Points: matchedUploadMatch.homeLast6Points,
+        homeLast6GoalsGD: matchedUploadMatch.homeLast6GoalsGD,
+        awayLast6Points: matchedUploadMatch.awayLast6Points,
+        awayLast6GoalsGD: matchedUploadMatch.awayLast6GoalsGD,
+        homeRanking: matchedUploadMatch.homeRanking,
+        awayRanking: matchedUploadMatch.awayRanking
+      } : null,
+      validMatchIds,
+      totalMatches: validMatches.length,
+      currentPage: 0,
+      useUploadedData
+    });
     
     // Simple pagination state (in-memory for this request)
     const PAGE_SIZE = 7;
@@ -1643,7 +1815,7 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
 
     if (remainingMatches > 0) {
       await new Promise(resolve => setTimeout(resolve, 200));
-      await streamText(`\n💡 ${targetValues} နဲ့ အနီးစပ်ဆုံးပွဲတွေ ထပ်မံရှာလိုလျှင် "More" လို့ ပို့ပေးလို့ရပါတယ်။ (Remaining: ${remainingMatches})\n\n`, res, 10);
+      await streamText(`\n💡 ဆက်ကြည့်လိုလျှင် "More" သို့မဟုတ် "More session_${sessionId}" လို့ ပို့ပေးပါ။ (Remaining: ${remainingMatches})\n\n`, res, 10);
     } else {
       await new Promise(resolve => setTimeout(resolve, 200));
       await streamText(`\n✅ ပြသရန် ပွဲအားလုံး ကုန်ဆုံးပါပြီ။ စုစုပေါင်း ${totalMatches} ပွဲ။\n\n`, res, 10);
