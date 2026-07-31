@@ -15,6 +15,11 @@ import 'dotenv/config';
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+// ES Module အတွက် __dirname ရယူခြင်း
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ✅ Read index.html once at startup
 const indexPath = join(process.cwd(), 'index.html');
@@ -1116,7 +1121,27 @@ async function streamMasterAnalysis(analysis, res, delay = 12) {
   
   await streamText(output, res, delay);
 }
+/ ✅ SERVE INDEX.HTML FOR ROOT ROUTE
+let indexHtmlContent = '';
+try {
+  // public folder ထဲက index.html ကို ဖတ်ပါ
+  const publicPath = join(process.cwd(), 'public', 'index.html');
+  indexHtmlContent = readFileSync(publicPath, 'utf-8');
+  console.log('✅ index.html loaded successfully from public folder');
+} catch (err) {
+  console.error('❌ Could not load index.html:', err.message);
+}
 
+app.get('/', (req, res) => {
+  if (!indexHtmlContent) {
+    return res.status(500).send('Error: index.html not found. Please ensure public/index.html exists.');
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(indexHtmlContent);
+});
+
+// ✅ SERVE STATIC FILES (CSS, Images, etc.)
+app.use(express.static(join(process.cwd(), 'public')));
 // ✅ Vercel API Route Handler
 app.post('/api/chat-stream', async (req, res) => {
   try {
