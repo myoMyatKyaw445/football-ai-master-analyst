@@ -1,4 +1,4 @@
-// server.js - Vercel Optimized Version
+// server.js - Vercel Optimized Version (Final Merged)
 // Features: File Upload, Team Search, Number Search, Auto-Detect Lower Odds, 
 //           Sort by Distance + Deduplication + Priority CO Sorting, Progressive Pagination, 
 //           Google Login, Chat History, AI Predictions, Enhanced Market Odds Analysis,
@@ -11,29 +11,15 @@ import { MongoClient } from 'mongodb';
 import multer from 'multer';
 import XLSX from 'xlsx';
 import 'dotenv/config';
-// ... (အပေါ်က Import များပြီးနောက်)
 
+// ✅ CRITICAL FIX: Import path utilities correctly for ES Modules
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// ES Module အတွက် __dirname ရယူခြင်း
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// ✅ Read index.html once at startup
-const indexPath = join(process.cwd(), 'index.html');
-let indexHtmlContent = '';
-
-try {
-  indexHtmlContent = readFileSync(indexPath, 'utf-8');
-  console.log('✅ index.html loaded successfully');
-} catch (err) {
-  console.error('❌ Could not load index.html:', err.message);
-  console.error('💡 Make sure index.html is in the root folder of your repository');
-}
-
-// ... (ကျန်ရှိသော Code များ)
 // ✅ Import Google Login Module (separate file)
 import { setupGoogleLogin } from './googleLogin.js';
 
@@ -48,7 +34,6 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
 
 // ✅ Initialize Google Login
 setupGoogleLogin(app);
@@ -1121,7 +1106,8 @@ async function streamMasterAnalysis(analysis, res, delay = 12) {
   
   await streamText(output, res, delay);
 }
-/ ✅ SERVE INDEX.HTML FOR ROOT ROUTE
+
+// ✅ SERVE INDEX.HTML FOR ROOT ROUTE
 let indexHtmlContent = '';
 try {
   // public folder ထဲက index.html ကို ဖတ်ပါ
@@ -1142,6 +1128,7 @@ app.get('/', (req, res) => {
 
 // ✅ SERVE STATIC FILES (CSS, Images, etc.)
 app.use(express.static(join(process.cwd(), 'public')));
+
 // ✅ Vercel API Route Handler
 app.post('/api/chat-stream', async (req, res) => {
   try {
