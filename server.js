@@ -1320,43 +1320,100 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
         else { targets.HO = nums[0]; activeSide = 'home'; searchKey = `HO_${nums[0]}`; }
       }
     }
-    else if (uploadedMatches.length > 0 && uploadTimestamp && message && !isNextRequest) {
-      const THIRTY_MINUTES = 30 * 60 * 1000;
-      if (Date.now() - uploadTimestamp < THIRTY_MINUTES) {
-        console.log('🔍 Searching for team in uploaded matches...');
-        for (const uploaded of uploadedMatches) {
-          const homeKeywords = getTeamKeywords(uploaded.homeTeam);
-          const awayKeywords = getTeamKeywords(uploaded.awayTeam);
-          let homeMatched = false, awayMatched = false;
-          for (const keyword of homeKeywords) { if (lowerMsg.includes(keyword)) { homeMatched = true; console.log('✅ Home matched:', keyword); break; } }
-          for (const keyword of awayKeywords) { if (lowerMsg.includes(keyword)) { awayMatched = true; console.log('✅ Away matched:', keyword); break; } }
-          if (homeMatched || awayMatched) {
-            console.log('🎯 Found:', uploaded.homeTeam, 'vs', uploaded.awayTeam);
-            matchedUploadMatch = uploaded;
-            useUploadedData = true;
-            const hasValidHO = uploaded.homeOverallOdds !== null && uploaded.homeOverallOdds > 0;
-            const hasValidAO = uploaded.awayOverallOdds !== null && uploaded.awayOverallOdds > 0;
-            const hasValidHA = uploaded.homeAdjustedDecimal !== null && uploaded.homeAdjustedDecimal > 0;
-            const hasValidAA = uploaded.awayAdjustedDecimal !== null && uploaded.awayAdjustedDecimal > 0;
-            if (hasValidHO && hasValidAO) {
-              if (uploaded.awayOverallOdds < uploaded.homeOverallOdds) {
-                targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
-                console.log('✅ Using AWAY odds (AO:', targets.AO, '< HO:', uploaded.homeOverallOdds, ')');
-              } else {
-                targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
-                console.log('✅ Using HOME odds (HO:', targets.HO, '< AO:', uploaded.awayOverallOdds, ')');
-              }
-            } else if (hasValidHO && hasValidHA) {
-              targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
-            } else if (hasValidAO && hasValidAA) {
-              targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
-            }
-            searchKey = `UPLOADED_${uploaded.homeTeam}_${uploaded.awayTeam}`;
+    // ✅ IMPROVED: Team search with exact match first, then strict keyword match
+else if (uploadedMatches.length > 0 && uploadTimestamp && message && !isNextRequest) {
+  const THIRTY_MINUTES = 30 * 60 * 1000;
+  if (Date.now() - uploadTimestamp < THIRTY_MINUTES) {
+    console.log('🔍 Searching for team in uploaded matches...');
+    
+    // ✅ STEP 1: Try EXACT team name match first (case-insensitive)
+    for (const uploaded of uploadedMatches) {
+      const exactHome = uploaded.homeTeam.toLowerCase().trim();
+      const exactAway = uploaded.awayTeam.toLowerCase().trim();
+      const exactMatch = `${exactHome} vs ${exactAway}`;
+      const reverseMatch = `${exactAway} vs ${exactHome}`;
+      
+      // Check if user message contains exact team name or full match
+      if (lowerMsg.includes(exactHome) || lowerMsg.includes(exactAway) || 
+          lowerMsg.includes(exactMatch) || lowerMsg.includes(reverseMatch)) {
+        console.log('🎯 Found (EXACT match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
+        matchedUploadMatch = uploaded;
+        useUploadedData = true;
+        
+        // Set targets based on lower odds side
+        const hasValidHO = uploaded.homeOverallOdds !== null && uploaded.homeOverallOdds > 0;
+        const hasValidAO = uploaded.awayOverallOdds !== null && uploaded.awayOverallOdds > 0;
+        const hasValidHA = uploaded.homeAdjustedDecimal !== null && uploaded.homeAdjustedDecimal > 0;
+        const hasValidAA = uploaded.awayAdjustedDecimal !== null && uploaded.awayAdjustedDecimal > 0;
+        
+        if (hasValidHO && hasValidAO) {
+          if (uploaded.awayOverallOdds < uploaded.homeOverallOdds) {
+            targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+          } else {
+            targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+          }
+        } else if (hasValidHO && hasValidHA) {
+          targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+        } else if (hasValidAO && hasValidAA) {
+          targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+        }
+        searchKey = `UPLOADED_${uploaded.homeTeam}_${uploaded.awayTeam}`;
+        break; // Found exact match, stop searching
+      }
+    }
+    
+    // ✅ STEP 2: If no exact match, try STRICT keyword matching (BOTH home AND away must match)
+    if (!matchedUploadMatch) {
+      for (const uploaded of uploadedMatches) {
+        const homeKeywords = getTeamKeywords(uploaded.homeTeam);
+        const awayKeywords = getTeamKeywords(uploaded.awayTeam);
+        
+        // Require BOTH home AND away to have at least one keyword match
+        let homeMatched = false, awayMatched = false;
+        
+        for (const keyword of homeKeywords) {
+          if (lowerMsg.includes(keyword)) {
+            homeMatched = true;
             break;
           }
         }
+        for (const keyword of awayKeywords) {
+          if (lowerMsg.includes(keyword)) {
+            awayMatched = true;
+            break;
+          }
+        }
+        
+        // Only match if BOTH home AND away keywords matched
+        if (homeMatched && awayMatched) {
+          console.log('🎯 Found (STRICT keyword match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
+          matchedUploadMatch = uploaded;
+          useUploadedData = true;
+          
+          // Set targets based on lower odds side
+          const hasValidHO = uploaded.homeOverallOdds !== null && uploaded.homeOverallOdds > 0;
+          const hasValidAO = uploaded.awayOverallOdds !== null && uploaded.awayOverallOdds > 0;
+          const hasValidHA = uploaded.homeAdjustedDecimal !== null && uploaded.homeAdjustedDecimal > 0;
+          const hasValidAA = uploaded.awayAdjustedDecimal !== null && uploaded.awayAdjustedDecimal > 0;
+          
+          if (hasValidHO && hasValidAO) {
+            if (uploaded.awayOverallOdds < uploaded.homeOverallOdds) {
+              targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+            } else {
+              targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+            }
+          } else if (hasValidHO && hasValidHA) {
+            targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+          } else if (hasValidAO && hasValidAA) {
+            targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+          }
+          searchKey = `UPLOADED_${uploaded.homeTeam}_${uploaded.awayTeam}`;
+          break;
+        }
       }
     }
+  }
+}
 
     let offset = 0;
     if (canLoadPagination) { 
