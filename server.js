@@ -11,7 +11,24 @@ import { MongoClient } from 'mongodb';
 import multer from 'multer';
 import XLSX from 'xlsx';
 import 'dotenv/config';
+// ... (အပေါ်က Import များပြီးနောက်)
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+// ✅ Read index.html once at startup
+const indexPath = join(process.cwd(), 'index.html');
+let indexHtmlContent = '';
+
+try {
+  indexHtmlContent = readFileSync(indexPath, 'utf-8');
+  console.log('✅ index.html loaded successfully');
+} catch (err) {
+  console.error('❌ Could not load index.html:', err.message);
+  console.error('💡 Make sure index.html is in the root folder of your repository');
+}
+
+// ... (ကျန်ရှိသော Code များ)
 // ✅ Import Google Login Module (separate file)
 import { setupGoogleLogin } from './googleLogin.js';
 

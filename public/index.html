@@ -8,12 +8,92 @@
   <!-- ✅ Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
-  <!-- ✅ External CSS -->
-  <link rel="stylesheet" href="/style.css">
+  <!-- ✅ Inline CSS for Vercel Compatibility (Since /style.css might not load directly) -->
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --background: #f8fafc;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', 'Noto Sans Myanmar', sans-serif; background: var(--background); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    
+    .chat-container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; width: 100%; background: var(--surface); box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+    
+    .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border); background: var(--surface); z-index: 10; }
+    .title { font-size: 1.25rem; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
+    
+    .auth-area { display: flex; align-items: center; gap: 0.5rem; }
+    .login-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 500; transition: opacity 0.2s; border: none; cursor: pointer; }
+    .login-btn.secondary { background: var(--secondary); }
+    .login-btn:hover { opacity: 0.9; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; }
+    .user-info img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+    .user-name { font-size: 0.875rem; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .upload-area { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; background: #f1f5f9; }
+    .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
+    .upload-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .file-input { display: none; }
+    .file-name { font-size: 0.875rem; color: var(--secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-status { font-size: 0.75rem; font-weight: 600; }
+    .file-status.pending { color: var(--primary); }
+    .file-status.success { color: var(--success); }
+    .file-status.error { color: var(--danger); }
+
+    .chat-box { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; scroll-behavior: smooth; }
+    .chat-box div { line-height: 1.6; font-size: 0.95rem; }
+    .user-msg { background: #eff6ff; color: var(--primary); padding: 0.75rem 1rem; border-radius: 12px 12px 0 12px; align-self: flex-end; max-width: 85%; font-weight: 500; }
+    .loading { color: var(--secondary); font-style: italic; font-size: 0.875rem; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+    .scroll-hint { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.75rem; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 20; }
+    .scroll-hint.show { opacity: 1; pointer-events: all; }
+
+    .input-area { padding: 1rem; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 0.75rem; }
+    #userInput { flex: 1; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s; font-family: inherit; }
+    #userInput:focus { border-color: var(--primary); }
+    .send-btn { padding: 0 1.5rem; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .send-btn:disabled { background: var(--secondary); cursor: not-allowed; }
+    .send-btn:hover:not(:disabled) { background: #1d4ed8; }
+
+    /* History Sidebar */
+    .history-sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100%; background: var(--surface); box-shadow: -4px 0 15px rgba(0,0,0,0.1); z-index: 50; transition: right 0.3s ease; display: flex; flex-direction: column; }
+    .history-sidebar.open { right: 0; }
+    .history-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .history-header h3 { font-size: 1rem; font-weight: 600; }
+    .history-header button { background: none; border: none; font-size: 1.25rem; cursor: pointer; color: var(--secondary); }
+    .history-list { flex: 1; overflow-y: auto; padding: 1rem; }
+    .history-item { padding: 0.75rem; border-bottom: 1px solid var(--border); cursor: pointer; border-radius: 6px; transition: background 0.2s; margin-bottom: 0.5rem; }
+    .history-item:hover { background: #f1f5f9; }
+    .history-item .date { font-size: 0.75rem; color: var(--secondary); margin-bottom: 0.25rem; }
+    .history-item .preview { font-size: 0.875rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-item .odds { font-size: 0.75rem; color: var(--primary); margin-top: 0.25rem; font-weight: 600; }
+    .history-empty { text-align: center; color: var(--secondary); padding: 2rem 1rem; font-size: 0.875rem; }
+    
+    .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    /* Mobile Responsive */
+    @media (max-width: 640px) {
+      .chat-header { padding: 0.75rem; }
+      .title span { font-size: 1rem; }
+      .upload-area { flex-wrap: wrap; }
+      .file-name { width: 100%; font-size: 0.75rem; }
+      .input-area { padding: 0.75rem; }
+      #userInput { font-size: 0.875rem; }
+      .history-sidebar { width: 100%; right: -100%; }
+    }
+  </style>
 </head>
 <body>
   <div class="chat-container">
-    <!-- ✅ Header with Auth - Fixed Position -->
+    <!-- ✅ Header with Auth -->
     <div class="chat-header">
       <div class="title">
         <span>⚽</span> Football AI Analyst
@@ -88,21 +168,21 @@
     async function checkAuth() {
       try {
         const res = await fetch('/api/auth/status', { credentials: 'include' });
+        if (!res.ok) throw new Error('Auth failed');
         const data = await res.json();
         
         if (data.loggedIn && data.user) {
-  // ✅ Use name if available, fallback to email prefix
-  const displayName = data.user.name || data.user.email?.split('@')[0] || 'User';
-  
-  authArea.innerHTML = `
-    <div class="user-info">
-      <img src="${data.user.photo || ''}" alt="${displayName}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=007bff&color=fff'">
-      <span title="${data.user.email}" class="user-name">${displayName}</span>
-      <button onclick="logout()" class="login-btn secondary">Logout</button>
-      <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
-    </div>
-  `;
-  loadHistory();
+          const displayName = data.user.name || data.user.email?.split('@')[0] || 'User';
+          
+          authArea.innerHTML = `
+            <div class="user-info">
+              <img src="${data.user.photo || ''}" alt="${displayName}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=007bff&color=fff'">
+              <span title="${data.user.email}" class="user-name">${displayName}</span>
+              <button onclick="logout()" class="login-btn secondary">Logout</button>
+              <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
+            </div>
+          `;
+          loadHistory();
         } else {
           authArea.innerHTML = `
             <a href="/auth/google" class="login-btn" title="Login with Google">
@@ -122,10 +202,7 @@
     // ✅ Logout
     async function logout() {
       try {
-        await fetch('/api/auth/logout', { 
-          method: 'POST', 
-          credentials: 'include' 
-        });
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
         checkAuth();
         chatBox.innerHTML = `<div>👋 Logged out. မင်္ဂလာပါ! ဂဏန်းများ ရိုက်ထည့်ပါ (ဥပမာ: 1.8)</div>`;
       } catch (err) {
@@ -148,6 +225,7 @@
         historyList.innerHTML = '<div class="history-empty"><div style="font-size:1.5rem;margin-bottom:8px;">📭</div>No chat history yet<br><small style="display:block;margin-top:8px;">Start chatting to save history</small></div>';
         
         const res = await fetch('/api/chat/history', { credentials: 'include' });
+        if (!res.ok) throw new Error('History fetch failed');
         const data = await res.json();
         
         if (data.history && data.history.length > 0) {
@@ -177,6 +255,7 @@
     async function loadChat(index) {
       try {
         const res = await fetch('/api/chat/history', { credentials: 'include' });
+        if (!res.ok) throw new Error('Chat fetch failed');
         const data = await res.json();
         
         if (data.history[index]) {
@@ -230,10 +309,9 @@
         fileStatus.textContent = '✅ Uploaded!';
         fileStatus.className = 'file-status success';
         
-        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left-color: var(--success);">📁 File "${fileName.textContent}" uploaded successfully! Ready to search historical data.</div>\n\n`;
+        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left: 4px solid var(--success); padding-left: 10px;">📁 File "${fileName.textContent}" uploaded successfully! Ready to search historical data.</div>\n\n`;
         scrollToBottom();
         
-        // ✅ Save to history if logged in
         if (await isLoggedIn()) {
           await saveChatToHistory('📁 File Upload: ' + file.name, fullResponse, { type: 'file_upload', fileName: file.name });
         }
@@ -336,7 +414,6 @@
           }
         }
         
-        // ✅ Save to history if logged in
         if (await isLoggedIn()) {
           const searchParams = {};
           const nums = msg.match(/\d+\.?\d*/g);
