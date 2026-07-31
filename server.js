@@ -1321,8 +1321,18 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
       
       // ✅ SAVE TO MONGODB
       if (newMatches.length > 0) {
+        // 1. အရင်တင်ထားတဲ့ data အကုန်လုံးကို ဖျက်ပစ်မယ်
+        await db.collection('temp_uploads').deleteMany({});
+        console.log('🗑️ Cleared previous uploads from temp_uploads collection.');
+        
+        // 2. Search session အဟောင်းတွေကိုပါ ဖျက်ပစ်မယ် (Error မတက်အောင်)
+        await db.collection('search_sessions').deleteMany({});
+        console.log('🗑️ Cleared old search sessions.');
+
+        // 3. ခုတင်လိုက်တဲ့ data အသစ်ကိုပဲ သိမ်းမယ်
         await db.collection('temp_uploads').insertMany(newMatches);
-        console.log(`✅ Saved ${newMatches.length} matches to DB collection 'temp_uploads'.`);
+        console.log(`✅ Saved ${newMatches.length} NEW matches to DB collection 'temp_uploads'.`);
+        
         uploadedMatches = newMatches; // For immediate response in this request
       }
       
