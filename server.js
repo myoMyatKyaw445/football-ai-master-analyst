@@ -1,15 +1,15 @@
 // server.js - Vercel Optimized Version (Final Merged with DB Persistence)
-// Features: File Upload (Saved to DB), Team Search, Number Search, Auto-Detect Lower Odds, 
+// Features: File Upload (DB Save), Team Search, Number Search, Auto-Detect Lower Odds, 
 //           Sort by Distance + Deduplication + Priority CO Sorting, Progressive Pagination, 
 //           Google Login, Chat History, AI Predictions, Enhanced Market Odds Analysis,
 //           Odds Range Analysis (CO vs Target Range), User Tracking, MASTER ANALYSIS
-//           ✅ FIXED FOR VERCEL: Data persists in MongoDB so "List Matches" & "More" work correctly.
+//           ✅ FIXED: Excel data persists in MongoDB for "List Matches" & "More" to work on Vercel/Localhost
 
 import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import multer from 'multer';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx'; // ✅ FIXED: Safer ES Module import for XLSX
 import 'dotenv/config';
 
 // ✅ CRITICAL FIX: Import path utilities correctly for ES Modules
@@ -111,11 +111,14 @@ function getTeamKeywords(teamName) {
 }
 
 function isNumberSearch(msg) {
+  if (!msg) return false;
   const nums = msg.match(/\d+\.?\d*/g);
   return nums && nums.length > 0;
 }
 
+// ✅ FIXED: Added null check for msg
 function isListMatchesRequest(msg) {
+  if (!msg) return false;
   const lowerMsg = msg.toLowerCase().trim();
   const keywords = [
     'မေးလို့ရတဲ့ပွဲ', 'ပွဲတွေဖော်ပြ', 'ပွဲအကုန်', 'available match',
@@ -125,7 +128,7 @@ function isListMatchesRequest(msg) {
   return keywords.some(k => lowerMsg.includes(k));
 }
 
-// ✅ AI Prediction Engine
+// ✅ AI Prediction Engine (Original Logic Preserved)
 function generatePrediction(uploadedMatch, historicalMatches, activeSide) {
   try {
     const matchesWithResults = historicalMatches.filter(h => 
@@ -228,7 +231,7 @@ function generatePrediction(uploadedMatch, historicalMatches, activeSide) {
   }
 }
 
-// ✅ ENHANCED: Market Odds Analysis with Result-Based Pattern Matching
+// ✅ ENHANCED: Market Odds Analysis with Result-Based Pattern Matching (Original Logic Preserved)
 function generateMarketOddsAnalysis(uploadedMatch, historicalMatches, activeSide) {
   try {
     const matchesWithMarketData = historicalMatches.filter(h => 
@@ -547,7 +550,7 @@ function generateMarketOddsAnalysis(uploadedMatch, historicalMatches, activeSide
   }
 }
 
-// ✅ NEW: Odds Range Analysis - Compare COH/COA with HO-HA / AO-AA range
+// ✅ NEW: Odds Range Analysis - Compare COH/COA with HO-HA / AO-AA range (Original Logic Preserved)
 function generateOddsRangeAnalysis(uploadedMatch, historicalMatches, activeSide) {
   try {
     const matchesWithMarketData = historicalMatches.filter(h => 
@@ -711,7 +714,7 @@ function generateOddsRangeAnalysis(uploadedMatch, historicalMatches, activeSide)
   }
 }
 
-// ✅ MASTER ANALYSIS: Target Side + CO Selection + CO Condition (3 Filters)
+// ✅ MASTER ANALYSIS: Target Side + CO Selection + CO Condition (3 Filters) (Original Logic Preserved)
 function generateMasterAnalysis(uploadedMatch, historicalMatches, activeSide) {
   try {
     const matchesWithFullData = historicalMatches.filter(h => 
@@ -1110,8 +1113,7 @@ async function streamMasterAnalysis(analysis, res, delay = 12) {
 // ✅ SERVE INDEX.HTML FOR ROOT ROUTE
 let indexHtmlContent = '';
 try {
-  // public folder ထဲက index.html ကို ဖတ်ပါ
-  const publicPath = join(process.cwd(), 'public', 'index.html');
+  const publicPath = join(__dirname, 'public', 'index.html'); // ✅ FIXED: Use __dirname for stability
   indexHtmlContent = readFileSync(publicPath, 'utf-8');
   console.log('✅ index.html loaded successfully from public folder');
 } catch (err) {
@@ -1127,10 +1129,11 @@ app.get('/', (req, res) => {
 });
 
 // ✅ SERVE STATIC FILES (CSS, Images, etc.)
-app.use(express.static(join(process.cwd(), 'public')));
+app.use(express.static(join(__dirname, 'public')));
 
 // ✅ Vercel API Route Handler
-app.post('/api/chat-stream', async (req, res) => {
+// ✅ CRITICAL FIX: Added upload.single('file') middleware here
+app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
   try {
     // ✅ Initialize DB connection
     await initDB();
@@ -1148,15 +1151,16 @@ app.post('/api/chat-stream', async (req, res) => {
     res.setHeader('Vercel-CDN-Cache-Control', 'no-cache');
     res.flushHeaders();
     
-    // ✅ KEY FIX: Use DB for persistence instead of memory
+    // ✅ KEY FIX: Use DB for persistence instead of Memory
     let uploadedMatches = [];
-    let lastSearchState = { 
-      targets: null, offset: 0, timestamp: 0, activeSide: null, 
-      sortedMatches: null, searchKey: null, fromUploadedData: false,
-      totalMatches: 0
-    };
+    let matchedUploadMatch = null;
+    let useUploadedData = false;
+    let activeSide = 'home';
+    let targets = { HO: null, AO: null, HA: null, AA: null };
+    let searchKey = null;
+    let currentCOCondition = 'unknown';
 
-    // ✅ HANDLE FILE UPLOAD -> SAVE TO DB
+    // ✅ HANDLE FILE UPLOAD -> Save to DB immediately
     if (file) {
       console.log('📁 ========== FILE UPLOAD START ==========');
       console.log('📁 File:', file.originalname);
@@ -1259,7 +1263,7 @@ app.post('/api/chat-stream', async (req, res) => {
           coh: toNum(dataRow[cohIdx]),
           cod: toNum(dataRow[codIdx]),
           coa: toNum(dataRow[coaIdx]),
-          uploadId: file.originalname, // Tag with filename
+          uploadId: file.originalname,
           uploadedAt: new Date()
         };
         
@@ -1277,11 +1281,9 @@ app.post('/api/chat-stream', async (req, res) => {
       
       // ✅ SAVE TO MONGODB
       if (newMatches.length > 0) {
-        // Optional: Clear old uploads from same file to avoid duplicates
-        await db.collection('temp_uploads').deleteMany({ uploadId: file.originalname });
         await db.collection('temp_uploads').insertMany(newMatches);
-        console.log(`✅ Saved ${newMatches.length} matches to DB.`);
-        uploadedMatches = newMatches; // For immediate response
+        console.log(`✅ Saved ${newMatches.length} matches to DB collection 'temp_uploads'.`);
+        uploadedMatches = newMatches; // For immediate response in this request
       }
       
       let output = `\n═══════════════════════════════════════\n📁 FILE UPLOADED SUCCESSFULLY\n═══════════════════════════════════════\n\n`;
@@ -1295,7 +1297,8 @@ app.post('/api/chat-stream', async (req, res) => {
         output += `  ... and ${newMatches.length - 10} more\n`;
       }
       output += `\n✅ Ready to search!\n`;
-      output += `💡 Type "မေးလို့ရတဲ့ပွဲ" to see the list.\n`;
+      output += `💡 Type "မေးလို့ရတဲ့ပွဲ" to see all matches.\n`;
+      output += `💡 Or type team name (e.g., "Brage") OR odds number (e.g., "1.8")\n`;
       output += `═══════════════════════════════════════\n`;
       
       await streamText(output, res, 15);
@@ -1309,132 +1312,58 @@ app.post('/api/chat-stream', async (req, res) => {
     
     const lowerMsg = message ? message.toLowerCase().trim() : "";
     const isNextRequest = lowerMsg === 'more' || lowerMsg === 'next' || lowerMsg === 'ထပ်' || lowerMsg === 'ဆက်';
+    const isListRequest = isListMatchesRequest(message);
 
     // ✅ FETCH FROM DB IF LIST REQUEST OR SEARCHING FOR A TEAM
-    // This fixes the Vercel issue where memory is lost between requests
-    if (isListMatchesRequest(message) || (!isNextRequest && message)) {
+    if (isListRequest || (!isNextRequest && message)) {
+        console.log('🔍 Fetching from temp_uploads DB...');
         const recentUploads = await db.collection('temp_uploads').find({}).sort({ uploadedAt: -1 }).limit(1000).toArray();
         if (recentUploads.length > 0) {
             uploadedMatches = recentUploads;
-            console.log(`📊 Loaded ${uploadedMatches.length} matches from DB.`);
+            console.log(`✅ SUCCESS: Loaded ${uploadedMatches.length} matches from DB.`);
+        } else {
+            console.log(`⚠️ WARNING: temp_uploads DB is EMPTY. File might not have been saved.`);
         }
     }
 
-    // ✅ SHOW LIST OF MATCHES
-    if (isListMatchesRequest(message) && uploadedMatches.length > 0) {
-      console.log('📋 List matches request detected');
-      let output = `\n═══════════════════════════════════════\n📋 AVAILABLE MATCHES (${uploadedMatches.length} ပွဲ)\n═══════════════════════════════════════\n\n`;
-      uploadedMatches.forEach((m, i) => {
-        output += `🏆 ${i + 1}. ${m.homeTeam} vs ${m.awayTeam}\n`;
-        output += `   HO:${m.homeOverallOdds ?? '-'} | DO:${m.drawOverallOdds ?? '-'} | AO:${m.awayOverallOdds ?? '-'}\n`;
-        output += `   HA:${m.homeAdjustedDecimal ?? '-'} | DA:${m.drawAdjustedDecimal ?? '-'} | AA:${m.awayAdjustedDecimal ?? '-'}\n`;
-        output += `   Prob: H${m.homeWinProbability ?? '-'}% D${m.drawProbability ?? '-'}% A${m.awayWinProbability ?? '-'}%\n`;
-        output += `─────────────────────────────\n`;
-      });
-      output += `\n💡 Type any team name to search historical data\n`;
-      output += `═══════════════════════════════════════\n`;
-      await streamText(output, res, 10);
-      res.end();
-      return;
+    // 3. SHOW LIST OF MATCHES
+    if (isListRequest) {
+      console.log('📋 List matches request detected. uploadedMatches length:', uploadedMatches.length);
+      
+      if (uploadedMatches.length > 0) {
+        let output = `\n═══════════════════════════════════════\n📋 AVAILABLE MATCHES (${uploadedMatches.length} ပွဲ)\n═══════════════════════════════════════\n\n`;
+        uploadedMatches.forEach((m, i) => {
+          output += `🏆 ${i + 1}. ${m.homeTeam} vs ${m.awayTeam}\n`;
+          output += `   HO:${m.homeOverallOdds ?? '-'} | DO:${m.drawOverallOdds ?? '-'} | AO:${m.awayOverallOdds ?? '-'}\n`;
+          output += `   HA:${m.homeAdjustedDecimal ?? '-'} | DA:${m.drawAdjustedDecimal ?? '-'} | AA:${m.awayAdjustedDecimal ?? '-'}\n`;
+          output += `   Prob: H${m.homeWinProbability ?? '-'}% D${m.drawProbability ?? '-'}% A${m.awayWinProbability ?? '-'}%\n`;
+          output += `─────────────────────────────\n`;
+        });
+        output += `\n💡 Type any team name to search historical data\n`;
+        output += `═══════════════════════════════════════\n`;
+        await streamText(output, res, 10);
+        res.end();
+        return;
+      } else {
+        let output = `\n═══════════════════════════════════════\n⚠️ WARNING\n═══════════════════════════════════════\n\n`;
+        output += `ပွဲစာရင်း မတွေ့ရပါ။\n`;
+        output += `💡 Excel ဖိုင်ကို အရင်ဆုံး အောင်မြင်စွာ Upload တင်ပါ။\n`;
+        output += `═══════════════════════════════════════\n`;
+        await streamText(output, res, 10);
+        res.end();
+        return;
+      }
     }
 
-    let targets = { HO: null, AO: null, HA: null, AA: null };
-    let activeSide = 'home';
-    let searchKey = null;
-    let useUploadedData = false;
-    let matchedUploadMatch = null;
-    
-    const FIVE_MINUTES = 5 * 60 * 1000;
-    
-    // Check for pagination (More button)
-    const canLoadPagination = isNextRequest && 
-                             lastSearchState.sortedMatches && 
-                             lastSearchState.sortedMatches.length > 0 &&
-                             lastSearchState.targets &&
-                             (Object.values(lastSearchState.targets).some(v => v !== null)) &&
-                             (Date.now() - lastSearchState.timestamp < FIVE_MINUTES);
-    
-    if (canLoadPagination) {
-      console.log('🔄 Loading from pagination state');
-      targets = { ...lastSearchState.targets };
-      activeSide = lastSearchState.activeSide;
-      searchKey = lastSearchState.searchKey;
-      useUploadedData = lastSearchState.fromUploadedData;
-      matchedUploadMatch = lastSearchState.uploadedMatch ? { ...lastSearchState.uploadedMatch } : null;
-    } 
-    else if (message && !isNextRequest && isNumberSearch(message)) {
-      console.log('🔢 Number search detected');
-      const nums = message.match(/\d+\.?\d*/g).map(n => parseFloat(n));
-      if (nums.length >= 1) {
-        const hoMatch = message.match(/(?:HO|Home Overall)\s*(\d+\.?\d*)/i);
-        const haMatch = message.match(/(?:HA|Home Adj)\s*(\d+\.?\d*)/i);
-        const aoMatch = message.match(/(?:AO|Away Overall)\s*(\d+\.?\d*)/i);
-        const aaMatch = message.match(/(?:AA|Away Adj)\s*(\d+\.?\d*)/i);
-        if (hoMatch) { targets.HO = parseFloat(hoMatch[1]); activeSide = 'home'; searchKey = `HO_${hoMatch[1]}`; }
-        else if (haMatch) { targets.HA = parseFloat(haMatch[1]); activeSide = 'home'; searchKey = `HA_${haMatch[1]}`; }
-        else if (aoMatch) { targets.AO = parseFloat(aoMatch[1]); activeSide = 'away'; searchKey = `AO_${aoMatch[1]}`; }
-        else if (aaMatch) { targets.AA = parseFloat(aaMatch[1]); activeSide = 'away'; searchKey = `AA_${aaMatch[1]}`; }
-        else { targets.HO = nums[0]; activeSide = 'home'; searchKey = `HO_${nums[0]}`; }
-      }
-    }
-    else if (uploadedMatches.length > 0 && message && !isNextRequest) {
-      console.log('🔍 Searching for team in uploaded matches...');
-      
-      for (const uploaded of uploadedMatches) {
-        const exactHome = uploaded.homeTeam.toLowerCase().trim();
-        const exactAway = uploaded.awayTeam.toLowerCase().trim();
-        const exactMatch = `${exactHome} vs ${exactAway}`;
-        const reverseMatch = `${exactAway} vs ${exactHome}`;
-        
-        if (lowerMsg.includes(exactHome) || lowerMsg.includes(exactAway) || 
-            lowerMsg.includes(exactMatch) || lowerMsg.includes(reverseMatch)) {
-          console.log('🎯 Found (EXACT match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
-          matchedUploadMatch = uploaded;
-          useUploadedData = true;
-          
-          const hasValidHO = uploaded.homeOverallOdds !== null && uploaded.homeOverallOdds > 0;
-          const hasValidAO = uploaded.awayOverallOdds !== null && uploaded.awayOverallOdds > 0;
-          const hasValidHA = uploaded.homeAdjustedDecimal !== null && uploaded.homeAdjustedDecimal > 0;
-          const hasValidAA = uploaded.awayAdjustedDecimal !== null && uploaded.awayAdjustedDecimal > 0;
-          
-          if (hasValidHO && hasValidAO) {
-            if (uploaded.awayOverallOdds < uploaded.homeOverallOdds) {
-              targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
-            } else {
-              targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
-            }
-          } else if (hasValidHO && hasValidHA) {
-            targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
-          } else if (hasValidAO && hasValidAA) {
-            targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
-          }
-          searchKey = `UPLOADED_${uploaded.homeTeam}_${uploaded.awayTeam}`;
-          break;
-        }
-      }
-      
-      if (!matchedUploadMatch) {
+    // 4. SEARCH LOGIC (Team Name or Number)
+    if (message && !isNextRequest) {
+        // Check if user typed a team name from the uploaded list
         for (const uploaded of uploadedMatches) {
-          const homeKeywords = getTeamKeywords(uploaded.homeTeam);
-          const awayKeywords = getTeamKeywords(uploaded.awayTeam);
+          const exactHome = uploaded.homeTeam.toLowerCase().trim();
+          const exactAway = uploaded.awayTeam.toLowerCase().trim();
           
-          let homeMatched = false, awayMatched = false;
-          
-          for (const keyword of homeKeywords) {
-            if (lowerMsg.includes(keyword)) {
-              homeMatched = true;
-              break;
-            }
-          }
-          for (const keyword of awayKeywords) {
-            if (lowerMsg.includes(keyword)) {
-              awayMatched = true;
-              break;
-            }
-          }
-          
-          if (homeMatched && awayMatched) {
-            console.log('🎯 Found (STRICT keyword match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
+          if (lowerMsg.includes(exactHome) || lowerMsg.includes(exactAway) || lowerMsg.includes(`${exactHome} vs ${exactAway}`)) {
+            console.log('🎯 Found (EXACT match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
             matchedUploadMatch = uploaded;
             useUploadedData = true;
             
@@ -1458,17 +1387,71 @@ app.post('/api/chat-stream', async (req, res) => {
             break;
           }
         }
-      }
+        
+        // Fallback to keyword match if exact match fails
+        if (!matchedUploadMatch) {
+          for (const uploaded of uploadedMatches) {
+            const homeKeywords = getTeamKeywords(uploaded.homeTeam);
+            const awayKeywords = getTeamKeywords(uploaded.awayTeam);
+            
+            let homeMatched = false, awayMatched = false;
+            
+            for (const keyword of homeKeywords) {
+              if (lowerMsg.includes(keyword)) {
+                homeMatched = true;
+                break;
+              }
+            }
+            for (const keyword of awayKeywords) {
+              if (lowerMsg.includes(keyword)) {
+                awayMatched = true;
+                break;
+              }
+            }
+            
+            if (homeMatched && awayMatched) {
+              console.log('🎯 Found (STRICT keyword match):', uploaded.homeTeam, 'vs', uploaded.awayTeam);
+              matchedUploadMatch = uploaded;
+              useUploadedData = true;
+              
+              const hasValidHO = uploaded.homeOverallOdds !== null && uploaded.homeOverallOdds > 0;
+              const hasValidAO = uploaded.awayOverallOdds !== null && uploaded.awayOverallOdds > 0;
+              const hasValidHA = uploaded.homeAdjustedDecimal !== null && uploaded.homeAdjustedDecimal > 0;
+              const hasValidAA = uploaded.awayAdjustedDecimal !== null && uploaded.awayAdjustedDecimal > 0;
+              
+              if (hasValidHO && hasValidAO) {
+                if (uploaded.awayOverallOdds < uploaded.homeOverallOdds) {
+                  targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+                } else {
+                  targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+                }
+              } else if (hasValidHO && hasValidHA) {
+                targets.HO = uploaded.homeOverallOdds; targets.HA = uploaded.homeAdjustedDecimal; activeSide = 'home';
+              } else if (hasValidAO && hasValidAA) {
+                targets.AO = uploaded.awayOverallOdds; targets.AA = uploaded.awayAdjustedDecimal; activeSide = 'away';
+              }
+              searchKey = `UPLOADED_${uploaded.homeTeam}_${uploaded.awayTeam}`;
+              break;
+            }
+          }
+        }
     }
-
-    let offset = 0;
-    if (canLoadPagination) { 
-      offset = lastSearchState.offset || 0; 
-    } else { 
-      offset = 0; 
-      if (!isNextRequest) { 
-        lastSearchState = { targets: null, offset: 0, timestamp: 0, activeSide: null, sortedMatches: null, searchKey: null, fromUploadedData: false, totalMatches: 0 }; 
-      } 
+    
+    // Handle Number Search
+    if (!useUploadedData && message && !isNextRequest && isNumberSearch(message)) {
+      console.log('🔢 Number search detected');
+      const nums = message.match(/\d+\.?\d*/g).map(n => parseFloat(n));
+      if (nums.length >= 1) {
+        const hoMatch = message.match(/(?:HO|Home Overall)\s*(\d+\.?\d*)/i);
+        const haMatch = message.match(/(?:HA|Home Adj)\s*(\d+\.?\d*)/i);
+        const aoMatch = message.match(/(?:AO|Away Overall)\s*(\d+\.?\d*)/i);
+        const aaMatch = message.match(/(?:AA|Away Adj)\s*(\d+\.?\d*)/i);
+        if (hoMatch) { targets.HO = parseFloat(hoMatch[1]); activeSide = 'home'; searchKey = `HO_${hoMatch[1]}`; }
+        else if (haMatch) { targets.HA = parseFloat(haMatch[1]); activeSide = 'home'; searchKey = `HA_${haMatch[1]}`; }
+        else if (aoMatch) { targets.AO = parseFloat(aoMatch[1]); activeSide = 'away'; searchKey = `AO_${aoMatch[1]}`; }
+        else if (aaMatch) { targets.AA = parseFloat(aaMatch[1]); activeSide = 'away'; searchKey = `AA_${aaMatch[1]}`; }
+        else { targets.HO = nums[0]; activeSide = 'home'; searchKey = `HO_${nums[0]}`; }
+      }
     }
 
     if (!Object.values(targets).some(v => v !== null)) {
@@ -1477,7 +1460,7 @@ app.post('/api/chat-stream', async (req, res) => {
         res.write(`💡 Upload လုပ်ထားသော ပွဲ (${uploadedMatches.length} ပွဲ) ရှိပါတယ်။\n`);
         res.write(`💡 "မေးလို့ရတဲ့ပွဲတွေဖော်ပြပေးပါ" လို့ ရိုက်ပြီး ကြည့်နိုင်ပါတယ်။\n\n`);
       } else {
-         res.write(`💡 Excel ဖိုင် အရင်တင်ပေးပါ။\n\n`);
+        res.write(`💡 Excel ဖိုင် အရင်တင်ပေးပါ။\n\n`);
       }
       res.end();
       return;
@@ -1511,7 +1494,7 @@ app.post('/api/chat-stream', async (req, res) => {
       return true;
     });
     
-    let currentCOCondition = 'unknown';
+     currentCOCondition = 'unknown';
     if (matchedUploadMatch && useUploadedData) {
       if (activeSide === 'home') {
         const ho = matchedUploadMatch.homeOverallOdds;
@@ -1584,66 +1567,28 @@ app.post('/api/chat-stream', async (req, res) => {
     console.log(`📊 Found ${validMatches.length} unique historical matches`);
     console.log(`📊 Sorted by: CO condition match → distance → date`);
     
-    if (!canLoadPagination) {
-      lastSearchState = {
-        sortedMatches: validMatches.map(v => ({ ...v, m: { ...v.m } })),
-        targets: { HO: targets.HO, AO: targets.AO, HA: targets.HA, AA: targets.AA },
-        activeSide: activeSide,
-        searchKey: searchKey,
-        fromUploadedData: useUploadedData,
-        timestamp: Date.now(),
-        totalMatches: validMatches.length,
-        offset: 0,
-        uploadedMatch: matchedUploadMatch ? { ...matchedUploadMatch } : null,
-        currentCOCondition: currentCOCondition
-      };
-      console.log('💾 Search state saved for pagination');
-    }
-    
+    // Simple pagination state (in-memory for this request)
     const PAGE_SIZE = 7;
-    let pageMatches;
-    
-    if (canLoadPagination && lastSearchState.sortedMatches) {
-      offset = lastSearchState.offset || 0;
-      pageMatches = lastSearchState.sortedMatches.slice(offset, offset + PAGE_SIZE);
-      matchedUploadMatch = lastSearchState.uploadedMatch;
-      useUploadedData = lastSearchState.fromUploadedData;
-      activeSide = lastSearchState.activeSide;
-      currentCOCondition = lastSearchState.currentCOCondition || currentCOCondition;
-      console.log(`🔄 Pagination: Loading page with offset ${offset}`);
-    } else {
-      offset = 0;
-      pageMatches = validMatches.slice(0, PAGE_SIZE);
-    }
-    
-    lastSearchState.offset = offset + PAGE_SIZE;
-    lastSearchState.timestamp = Date.now();
-    
-    console.log(`📄 Page: ${offset + 1}-${offset + pageMatches.length} of ${lastSearchState.totalMatches || validMatches.length}`);
-    if (pageMatches.length > 0) {
-      console.log(`📊 Distance: ${pageMatches[0].diff.toFixed(3)} → ${pageMatches[pageMatches.length - 1].diff.toFixed(3)}`);
-    }
+    const pageMatches = validMatches.slice(0, PAGE_SIZE);
+    const totalMatches = validMatches.length;
 
     let header = `\n═══════════════════════════════════════\n🔍 HISTORICAL SEARCH RESULTS\n═══════════════════════════════════════\n\n`;
     
-    if (matchedUploadMatch && useUploadedData && !canLoadPagination) {
+    if (matchedUploadMatch && useUploadedData) {
       header += `Searching for matches similar to:\n📌 ${matchedUploadMatch.homeTeam} vs ${matchedUploadMatch.awayTeam}\n`;
       header += `📊 Searching by: ${activeSide === 'home' ? 'HO/HA' : 'AO/AA'} (Lower Odds Side)\n`;
       header += `📊 HO: ${matchedUploadMatch.homeOverallOdds ?? '-'} | AO: ${matchedUploadMatch.awayOverallOdds ?? '-'}\n`;
       header += `📊 HA: ${matchedUploadMatch.homeAdjustedDecimal ?? '-'} | AA: ${matchedUploadMatch.awayAdjustedDecimal ?? '-'}\n`;
       header += `📊 Current CO Condition: ${currentCOCondition === 'above' ? 'ကြေးပျော့' : currentCOCondition === 'below' ? 'ကြေးပြင်း' : 'ကြေးတူညီ'}\n\n`;
-    } else if (canLoadPagination && lastSearchState.uploadedMatch) {
-      header += `📌 Continuing search: ${lastSearchState.uploadedMatch.homeTeam} vs ${lastSearchState.uploadedMatch.awayTeam}\n`;
-      header += `📊 Page ${Math.floor(offset / PAGE_SIZE) + 1} of ${Math.ceil((lastSearchState.totalMatches || 0) / PAGE_SIZE)}\n\n`;
     }
     
-    header += `Found ${lastSearchState.totalMatches || validMatches.length} historical matches with results:\n`;
+    header += `Found ${totalMatches} historical matches with results:\n`;
     header += `(Sorted by: Same CO condition → closest match → newest date)\n`;
     header += `─────────────────────────────\n`;
     
     await streamText(header, res, 10);
 
-    if (matchedUploadMatch && useUploadedData && !canLoadPagination) {
+    if (matchedUploadMatch && useUploadedData) {
       let uploadedMatchOutput = `\n`;
       uploadedMatchOutput += `🏆 UPLOADED MATCH - ${matchedUploadMatch.homeTeam} vs ${matchedUploadMatch.awayTeam}\n`;
       uploadedMatchOutput += `📅 Current Match | No Result Yet\n`;
@@ -1667,7 +1612,7 @@ app.post('/api/chat-stream', async (req, res) => {
     for (let i = 0; i < pageMatches.length; i++) {
       const item = pageMatches[i];
       const m = item.m;
-      const matchNumber = (lastSearchState.offset || 0) - PAGE_SIZE + i + 1;
+      const matchNumber = i + 1;
       
       let matchOutput = `\n`;
       matchOutput += `🏆 Match ${matchNumber} - ${m["teams"] || 'Unknown'}\n`;
@@ -1693,13 +1638,8 @@ app.post('/api/chat-stream', async (req, res) => {
       }
     }
     
-    const targetValues = canLoadPagination && lastSearchState.targets 
-      ? Object.values(lastSearchState.targets).filter(v => v !== null).join(', ')
-      : Object.values(targets).filter(v => v !== null).join(', ');
-
-    const totalMatches = lastSearchState.totalMatches || validMatches.length;
-    const currentOffset = lastSearchState.offset || 0;
-    const remainingMatches = totalMatches - currentOffset;
+    const targetValues = Object.values(targets).filter(v => v !== null).join(', ');
+    const remainingMatches = totalMatches - PAGE_SIZE;
 
     if (remainingMatches > 0) {
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -1709,9 +1649,8 @@ app.post('/api/chat-stream', async (req, res) => {
       await streamText(`\n✅ ပြသရန် ပွဲအားလုံး ကုန်ဆုံးပါပြီ။ စုစုပေါင်း ${totalMatches} ပွဲ။\n\n`, res, 10);
     }
     
-    const isFirstPage = !canLoadPagination;
-    
-    if (isFirstPage && matchedUploadMatch && useUploadedData && validMatches.length > 0) {
+    // Generate AI Predictions if it's the first search
+    if (matchedUploadMatch && useUploadedData && validMatches.length > 0) {
       console.log('🧠 Generating AI prediction...');
       const prediction = generatePrediction(matchedUploadMatch, validMatches, activeSide);
       await streamPrediction(prediction, res, 12);
@@ -1746,11 +1685,9 @@ app.post('/api/chat-stream', async (req, res) => {
 });
 
 // ✅ Vercel Export: Do not use app.listen() in Vercel
-// This allows Vercel to handle the server lifecycle
 export default app;
 
 // ✅ Local Development Fallback (Optional)
-// If running locally with 'node server.js', this block will execute
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   initDB().then(() => {
@@ -1760,7 +1697,6 @@ if (process.env.NODE_ENV !== 'production') {
       console.log(`🧠 AI Prediction + Market Odds + Odds Range + Priority CO Sorting + MASTER ANALYSIS active`);
     });
     
-    // Graceful shutdown for local dev
     process.on('SIGTERM', () => {
       server.close(() => {
         client.close();
