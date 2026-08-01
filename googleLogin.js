@@ -54,11 +54,14 @@ function getOS(userAgent) {
 
 // ✅ Initialize Google Login
 export function setupGoogleLogin(app) {
-  // ✅ TRUST PROXY - CRITICAL for Railway (must be BEFORE session middleware)
+  // ✅ TRUST PROXY - CRITICAL for Vercel/Railway (must be BEFORE session middleware)
   app.set('trust proxy', 1);
   
-  // ✅ Session Configuration - Fixed for Railway HTTPS + OAuth
-    app.use(session({
+  // ✅ FIX: Define isProduction variable here!
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // ✅ Session Configuration - Dynamic for Localhost and Vercel
+  app.use(session({
     secret: process.env.SESSION_SECRET || 'football-ai-chat-2026-secure-key-xyz789!@#$%^&*()',
     resave: false,
     saveUninitialized: false,
@@ -203,14 +206,14 @@ export function setupGoogleLogin(app) {
     }
   );
 
-    // ✅ Check Login Status (No Cache)
+  // ✅ Check Login Status (No Cache)
   app.get('/api/auth/status', (req, res) => {
     // ✅ Browser Cache ကို လုံးဝ ပိတ်ထားပါ
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     
-    if (req.isAuthenticated()) {
+    if (req.isAuthenticated() && req.user) {
       res.json({
         loggedIn: true,
         user: {
@@ -223,6 +226,7 @@ export function setupGoogleLogin(app) {
       res.json({ loggedIn: false });
     }
   });
+
   // ✅ Logout
   app.post('/api/auth/logout', async (req, res) => {
     if (req.user?.googleId) {
