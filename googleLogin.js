@@ -77,29 +77,26 @@ export function setupGoogleLogin(app) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // ✅ Build callback URL - SINGLE SOURCE OF TRUTH
+  // ✅ Build callback URL - SINGLE SOURCE OF TRUTH (With /api/ prefix)
   const getCallbackURL = () => {
-    // Priority 1: Explicit callback URL
     if (process.env.GOOGLE_CALLBACK_URL) {
       return process.env.GOOGLE_CALLBACK_URL;
     }
-    // Priority 2: Build from FRONTEND_URL
     if (process.env.FRONTEND_URL) {
-      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, ''); // Remove trailing slash
-      return `${baseUrl}/auth/google/callback`;
+      const baseUrl = process.env.FRONTEND_URL.replace(/\/$/, ''); 
+      return `${baseUrl}/api/auth/google/callback`; // ✅ /api/ added
     }
-    // Priority 3: Default for local development
-    return '/auth/google/callback';
+    return '/api/auth/google/callback'; // ✅ /api/ added
   };
 
   const callbackURL = getCallbackURL();
   console.log('🔐 Google OAuth callbackURL:', callbackURL);
 
-  // ✅ Google OAuth Strategy - USE THE SAME callbackURL
+  // ✅ Google OAuth Strategy
   passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: callbackURL,  // ← SAME variable used here
+      callbackURL: callbackURL,
       passReqToCallback: true
     },
     async (req, accessToken, refreshToken, profile, done) => {
@@ -107,11 +104,9 @@ export function setupGoogleLogin(app) {
         const db = await getDB();
         const now = new Date();
         
-        // ✅ Find or create user
         let user = await db.collection('users').findOne({ googleId: profile.id });
         
         if (!user) {
-          // ✅ NEW USER - First login
           user = {
             googleId: profile.id,
             email: profile.emails?.[0]?.value || '',
@@ -129,7 +124,6 @@ export function setupGoogleLogin(app) {
           await db.collection('users').insertOne(user);
           console.log(`✅ NEW USER: ${user.email} just logged in for the first time!`);
         } else {
-          // ✅ EXISTING USER - Update login stats
           await db.collection('users').updateOne(
             { googleId: profile.id },
             { 
@@ -140,7 +134,6 @@ export function setupGoogleLogin(app) {
           console.log(`🔄 RETURNING USER: ${user.email} logged in (Total: ${user.totalLogins} times)`);
         }
         
-        // ✅ Create login session record
         const userAgent = req.headers['user-agent'] || '';
         await db.collection('login_sessions').insertOne({
           userId: user._id,
@@ -168,7 +161,6 @@ export function setupGoogleLogin(app) {
     }
   ));
 
-  // ✅ Serialize user - save FULL user data to session (name, photo included)
   passport.serializeUser((user, done) => {
     done(null, {
       email: user.email,
@@ -178,25 +170,24 @@ export function setupGoogleLogin(app) {
     });
   });
 
-  // ✅ Deserialize user - return the same data (no DB query needed)
   passport.deserializeUser((obj, done) => {
     done(null, obj);
   });
 
   // ============================================
-  // 🔐 AUTH ROUTES
+  // 🔐 AUTH ROUTES (With /api/ prefix for Vercel)
   // ============================================
 
-  // ✅ Google Login - USE THE SAME callbackURL
-  app.get('/auth/google',
+  // ✅ Google Login Route
+  app.get('/api/auth/google',
     passport.authenticate('google', {
       scope: ['profile', 'email'],
-      callbackURL: callbackURL  // ← SAME variable used here
+      callbackURL: callbackURL
     })
   );
 
-  // ✅ Google Callback
-  app.get('/auth/google/callback',
+  // ✅ Google Callback Route
+  app.get('/api/auth/google/callback',
     passport.authenticate('google', { 
       failureRedirect: '/',
       failureMessage: true
@@ -208,7 +199,6 @@ export function setupGoogleLogin(app) {
 
   // ✅ Check Login Status (No Cache)
   app.get('/api/auth/status', (req, res) => {
-    // ✅ Browser Cache ကို လုံးဝ ပိတ်ထားပါ
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -264,7 +254,6 @@ export function setupGoogleLogin(app) {
   // 💬 CHAT HISTORY ROUTES
   // ============================================
 
-  // ✅ Save Chat to History
   app.post('/api/chat/save', async (req, res) => {
     try {
       if (!req.isAuthenticated() || !req.user?.email) {
@@ -298,7 +287,6 @@ export function setupGoogleLogin(app) {
     }
   });
 
-  // ✅ Load Chat History
   app.get('/api/chat/history', async (req, res) => {
     try {
       if (!req.isAuthenticated() || !req.user?.email) {
@@ -320,7 +308,6 @@ export function setupGoogleLogin(app) {
     }
   });
 
-  // ✅ Clear Chat History
   app.delete('/api/chat/history', async (req, res) => {
     try {
       if (!req.isAuthenticated() || !req.user?.email) {
@@ -342,14 +329,12 @@ export function setupGoogleLogin(app) {
   });
 
   // ============================================
-  // 📊 ANALYTICS ROUTES (Optional - Admin Dashboard)
+  // 📊 ANALYTICS ROUTES
   // ============================================
 
-  // ✅ Get User Stats
   app.get('/api/analytics/users', async (req, res) => {
     try {
       const db = await getDB();
-      
       const totalUsers = await db.collection('users').countDocuments();
       const activeUsers = await db.collection('users').countDocuments({
         lastLogin: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
@@ -378,11 +363,9 @@ export function setupGoogleLogin(app) {
     }
   });
 
-  // ✅ Get Currently Online Users
   app.get('/api/analytics/online', async (req, res) => {
     try {
       const db = await getDB();
-      
       const onlineUsers = await db.collection('login_sessions')
         .find({ 
           isActive: true,
@@ -400,7 +383,6 @@ export function setupGoogleLogin(app) {
     }
   });
 
-  // ✅ Update user activity on each request
   app.use(async (req, res, next) => {
     if (req.isAuthenticated() && req.user?.email) {
       try {
@@ -410,7 +392,7 @@ export function setupGoogleLogin(app) {
           { $set: { lastActive: new Date() } }
         );
       } catch (err) {
-        // Silently fail - don't break the request
+        // Silently fail
       }
     }
     next();
