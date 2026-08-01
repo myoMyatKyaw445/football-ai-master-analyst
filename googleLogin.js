@@ -58,15 +58,15 @@ export function setupGoogleLogin(app) {
   app.set('trust proxy', 1);
   
   // ✅ Session Configuration - Fixed for Railway HTTPS + OAuth
-  app.use(session({
+    app.use(session({
     secret: process.env.SESSION_SECRET || 'football-ai-chat-2026-secure-key-xyz789!@#$%^&*()',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-      secure: true,              // ✅ ALWAYS true for Railway (HTTPS required)
-      httpOnly: true,            // ✅ Prevent XSS
-      sameSite: 'none',          // ✅ Required for OAuth cross-site redirect
-      maxAge: 30 * 24 * 60 * 60 * 1000  // 30 days
+      secure: isProduction,             // ✅ Vercel (HTTPS) မှာ true, Localhost (HTTP) မှာ false
+      httpOnly: true,                   
+      sameSite: isProduction ? 'none' : 'lax', // ✅ Vercel မှာ 'none', Localhost မှာ 'lax'
+      maxAge: 30 * 24 * 60 * 60 * 1000  
     }
   }));
 
@@ -203,8 +203,13 @@ export function setupGoogleLogin(app) {
     }
   );
 
-  // ✅ Check Login Status
+    // ✅ Check Login Status (No Cache)
   app.get('/api/auth/status', (req, res) => {
+    // ✅ Browser Cache ကို လုံးဝ ပိတ်ထားပါ
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     if (req.isAuthenticated()) {
       res.json({
         loggedIn: true,
@@ -218,7 +223,6 @@ export function setupGoogleLogin(app) {
       res.json({ loggedIn: false });
     }
   });
-
   // ✅ Logout
   app.post('/api/auth/logout', async (req, res) => {
     if (req.user?.googleId) {

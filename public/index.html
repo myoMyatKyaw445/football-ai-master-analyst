@@ -8,7 +8,7 @@
   <!-- ✅ Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
-  <!-- ✅ Inline CSS for Vercel Compatibility (Since /style.css might not load directly) -->
+  <!-- ✅ Inline CSS for Vercel Compatibility -->
   <style>
     :root {
       --primary: #2563eb;
@@ -164,49 +164,69 @@
     let uploadedFile = null;
     let currentChatResponse = '';
 
-    // ✅ Check Login Status on Load
-    async function checkAuth() {
+    // ✅ Check Login Status on Load (With Full Debugging)
+        async function checkAuth() {
+      console.log("🔍 [Frontend] Starting checkAuth...");
       try {
-        const res = await fetch('/api/auth/status', { credentials: 'include' });
-        if (!res.ok) throw new Error('Auth failed');
+        // ✅ Date.now() ထည့်လိုက်တာနဲ့ Browser က Cache အဟောင်းကို မယူတော့ပါဘူး
+        const res = await fetch('/api/auth/status?t=' + Date.now(), { credentials: 'include' });
+        console.log("✅ [Frontend] Response Status:", res.status);
+        
         const data = await res.json();
+        console.log("✅ [Frontend] Response Data:", data);
         
         if (data.loggedIn && data.user) {
+          console.log("🎉 [Frontend] User is logged in! Updating UI...");
           const displayName = data.user.name || data.user.email?.split('@')[0] || 'User';
           
-          authArea.innerHTML = `
-            <div class="user-info">
-              <img src="${data.user.photo || ''}" alt="${displayName}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=007bff&color=fff'">
-              <span title="${data.user.email}" class="user-name">${displayName}</span>
-              <button onclick="logout()" class="login-btn secondary">Logout</button>
-              <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
-            </div>
-          `;
-          loadHistory();
+          if (authArea) {
+            authArea.innerHTML = `
+              <div class="user-info">
+                <img src="${data.user.photo || ''}" alt="${displayName}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=007bff&color=fff'">
+                <span title="${data.user.email}" class="user-name">${displayName}</span>
+                <button onclick="logout()" class="login-btn secondary">Logout</button>
+                <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
+              </div>
+            `;
+            console.log("✅ [Frontend] UI Updated Successfully!");
+            loadHistory();
+          } else {
+            console.error("❌ [Frontend] Element 'authArea' not found in HTML!");
+          }
         } else {
-          authArea.innerHTML = `
-            <a href="/auth/google" class="login-btn" title="Login with Google">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path fill="#fff" d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
-              </svg>
-              Login
-            </a>
-          `;
+          console.log("⚠️ [Frontend] User is NOT logged in. Showing Login button.");
+          if (authArea) {
+            authArea.innerHTML = `
+              <a href="/auth/google" class="login-btn" title="Login with Google">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path fill="#fff" d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+                </svg>
+                Login
+              </a>
+            `;
+          }
         }
       } catch (err) {
-        console.error('Auth check failed:', err);
-        authArea.innerHTML = `<a href="/auth/google" class="login-btn">Login</a>`;
+        console.error("❌ [Frontend] Auth check failed completely:", err);
+        if (authArea) {
+          authArea.innerHTML = `<a href="/auth/google" class="login-btn">Login</a>`;
+        }
       }
     }
 
     // ✅ Logout
     async function logout() {
+      console.log("🔍 [Frontend] Logging out...");
       try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-        checkAuth();
-        chatBox.innerHTML = `<div>👋 Logged out. မင်္ဂလာပါ! ဂဏန်းများ ရိုက်ထည့်ပါ (ဥပမာ: 1.8)</div>`;
+        const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        if (res.ok) {
+          console.log("✅ [Frontend] Logout successful. Reloading page...");
+          window.location.reload();
+        } else {
+          console.error("❌ [Frontend] Logout failed:", res.status);
+        }
       } catch (err) {
-        console.error('Logout failed:', err);
+        console.error("❌ [Frontend] Logout error:", err);
       }
     }
 
