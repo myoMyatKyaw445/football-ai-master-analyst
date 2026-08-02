@@ -47,16 +47,18 @@
     }
     
     .chat-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      padding: 1rem; 
-      border-bottom: 1px solid var(--border); 
-      background: var(--surface); 
-      z-index: 10; 
-      width: 100%; 
-      box-sizing: border-box; 
-    }
+  display: flex !important;       /* ✅ Extension တွေ ဖျောက်မရအောင် အတင်းပြမယ် */
+  visibility: visible !important; /* ✅ အမြင်အာရုံကို အတင်းဖွင့်မယ် */
+  opacity: 1 !important;          /* ✅ အရောင်ကို အတင်းပြမယ် */
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 1rem; 
+  border-bottom: 1px solid var(--border); 
+  background: var(--surface); 
+  z-index: 9999 !important;       /* ✅ အပေါ်ဆုံးမှာ ရှိနေအောင် လုပ်မယ် */
+  width: 100%; 
+  box-sizing: border-box; 
+}
     
     .title { 
       font-size: 1.25rem; 
