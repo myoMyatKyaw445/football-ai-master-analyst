@@ -45,19 +45,22 @@
     
     /* ✅ စမ်းသပ်ရန် အဝါရောင် ခေတ္တပြောင်းထားပါသည်။ ပေါ်လာရင် Box ရှိပြီး အထဲက စာသားပဲ ပျောက်နေတာ ဖြစ်သည်။ */
     .chat-header { 
-      display: flex !important;
-      flex-direction: row !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      padding: 0.75rem !important;
-      border-bottom: 1px solid var(--border); 
-      background: #ffeb3b !important; /* ✅ အဝါရောင် (စမ်းသပ်ရန်) */
-      z-index: 9999 !important; 
-      width: 100% !important;
-      box-sizing: border-box !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
+  position: sticky !important;  /* ✅ အပေါ်မှာ ကပ်ငြိနေအောင် လုပ်မယ် */
+  top: 0 !important;            /* ✅ အပေါ်ဆုံးမှာ ထားမယ် */
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0.75rem !important;
+  border-bottom: 1px solid var(--border); 
+  background: #ffeb3b !important; /* ✅ အဝါရောင် (စမ်းသပ်ရန်) */
+  z-index: 9999 !important; 
+  width: 100% !important;
+  box-sizing: border-box !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;    /* ✅ Header ကို ယ်တော့မှ ကျုံ့မသွားစေရ */
+}
     
     .title { 
       font-size: 1.1rem; 
