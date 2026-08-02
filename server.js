@@ -1151,21 +1151,22 @@ async function streamMasterAnalysis(analysis, res, delay = 12) {
 }
 
 // ✅ SERVE INDEX.HTML FOR ROOT ROUTE
-let indexHtmlContent = '';
-try {
-  const publicPath = join(__dirname, 'public', 'index.html'); // ✅ FIXED: Use __dirname for stability
-  indexHtmlContent = readFileSync(publicPath, 'utf-8');
-  console.log('✅ index.html loaded successfully from public folder');
-} catch (err) {
-  console.error('❌ Could not load index.html:', err.message);
-}
+// ✅ SERVE INDEX.HTML FOR ROOT ROUTE (Request တိုင်း ဖတ်မယ် - Cache မသုံးဘူး)
+const publicPath = join(__dirname, 'public', 'index.html');
 
 app.get('/', (req, res) => {
-  if (!indexHtmlContent) {
-    return res.status(500).send('Error: index.html not found. Please ensure public/index.html exists.');
+  try {
+    // ✅ Request တိုင်း index.html ကို အသစ်ဖတ်မယ် (Cache ပြဿနာ မရှိတော့ပါ)
+    const htmlContent = readFileSync(publicPath, 'utf-8');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.send(htmlContent);
+  } catch (err) {
+    console.error('❌ Could not load index.html:', err.message);
+    res.status(500).send('Error: index.html not found. Please ensure public/index.html exists.');
   }
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(indexHtmlContent);
 });
 
 // ✅ SERVE STATIC FILES (CSS, Images, etc.)
