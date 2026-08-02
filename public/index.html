@@ -2,13 +2,11 @@
 <html lang="my">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>⚽ Football AI Analyst</title>
   
-  <!-- ✅ Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   
-  <!-- ✅ Inline CSS for Vercel Compatibility -->
   <style>
     :root {
       --primary: #2563eb;
@@ -21,7 +19,6 @@
       --border: #e2e8f0;
     }
     
-    /* ✅ Bulletproof Layout Reset */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body { 
@@ -31,14 +28,14 @@
       height: 100vh; 
       width: 100vw;
       display: flex;
-      justify-content: center; /* ✅ Horizontal အလယ်ပို့ */
+      justify-content: center;
       overflow: hidden; 
     }
     
     .chat-container { 
       display: flex; 
       flex-direction: column; 
-      height: 100vh; /* ✅ 100% အစား 100vh အတိအကျ သုံးပါ */
+      height: 100vh; 
       width: 100%; 
       max-width: 800px; 
       background: var(--surface); 
@@ -46,22 +43,24 @@
       position: relative; 
     }
     
+    /* ✅ စမ်းသပ်ရန် အဝါရောင် ခေတ္တပြောင်းထားပါသည်။ ပေါ်လာရင် Box ရှိပြီး အထဲက စာသားပဲ ပျောက်နေတာ ဖြစ်သည်။ */
     .chat-header { 
-  display: flex !important;       /* ✅ Extension တွေ ဖျောက်မရအောင် အတင်းပြမယ် */
-  visibility: visible !important; /* ✅ အမြင်အာရုံကို အတင်းဖွင့်မယ် */
-  opacity: 1 !important;          /* ✅ အရောင်ကို အတင်းပြမယ် */
-  justify-content: space-between; 
-  align-items: center; 
-  padding: 1rem; 
-  border-bottom: 1px solid var(--border); 
-  background: var(--surface); 
-  z-index: 9999 !important;       /* ✅ အပေါ်ဆုံးမှာ ရှိနေအောင် လုပ်မယ် */
-  width: 100%; 
-  box-sizing: border-box; 
-}
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 0.75rem !important;
+      border-bottom: 1px solid var(--border); 
+      background: #ffeb3b !important; /* ✅ အဝါရောင် (စမ်းသပ်ရန်) */
+      z-index: 9999 !important; 
+      width: 100% !important;
+      box-sizing: border-box !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
     
     .title { 
-      font-size: 1.25rem; 
+      font-size: 1.1rem; 
       font-weight: 600; 
       color: var(--primary); 
       display: flex; 
@@ -73,21 +72,35 @@
       white-space: nowrap; 
     }
     
-    /* ✅ Ad-blocker ရှောင်ဖို့ user-nav နာမည်ပြောင်းထား */
     .user-nav { 
-      display: flex; 
-      align-items: center; 
+      display: flex !important;
+      align-items: center !important;
       gap: 0.5rem; 
-      flex-shrink: 0; 
+      flex-shrink: 0 !important;
+      visibility: visible !important;
     }
     
-    .login-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 500; transition: opacity 0.2s; border: none; cursor: pointer; }
-    .login-btn.secondary { background: var(--secondary); }
-    .login-btn:hover { opacity: 0.9; }
+    .login-btn { 
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.4rem !important;
+      padding: 0.5rem 0.8rem !important;
+      background: var(--primary) !important;
+      color: white !important;
+      text-decoration: none !important;
+      border-radius: 6px !important;
+      font-size: 0.8rem !important;
+      font-weight: 600 !important;
+      border: none !important;
+      cursor: pointer !important;
+      white-space: nowrap !important; /* ✅ စာသား ဘယ်တော့မှ နှစ်ကြောင်းမခွဲစေရ */
+    }
+    
+    .login-btn.secondary { background: var(--secondary) !important; }
     
     .user-info { display: flex; align-items: center; gap: 0.5rem; }
-    .user-info img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-    .user-name { font-size: 0.875rem; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .user-info img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .user-name { font-size: 0.8rem; font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .upload-area { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; background: #f1f5f9; }
     .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
@@ -111,7 +124,6 @@
       word-wrap: break-word; 
     }
     
-    /* ✅ Chat Box ထဲက Text တွေကို \n နဲ့ ခွဲထုတ်ပေးမယ့် CSS */
     .chat-box div { 
       line-height: 1.6; 
       font-size: 0.95rem; 
@@ -133,7 +145,6 @@
     .send-btn:disabled { background: var(--secondary); cursor: not-allowed; }
     .send-btn:hover:not(:disabled) { background: #1d4ed8; }
 
-    /* History Sidebar */
     .history-sidebar { position: fixed; top: 0; right: -320px; width: 320px; height: 100%; background: var(--surface); box-shadow: -4px 0 15px rgba(0,0,0,0.1); z-index: 50; transition: right 0.3s ease; display: flex; flex-direction: column; }
     .history-sidebar.open { right: 0; }
     .history-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
@@ -150,68 +161,33 @@
     .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
     .overlay.show { opacity: 1; pointer-events: all; }
 
-    /* Mobile Responsive */
-        /* Mobile Responsive - Bulletproof Version */
     @media (max-width: 640px) {
-      .chat-header { 
-        display: flex !important;
-        flex-direction: row !important; /* ✅ ဘယ်ညာ တန်းထားမယ် */
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 0.5rem !important;
-        width: 100% !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-      }
-      .title { 
-        font-size: 0.9rem !important; 
-        flex: 1 !important;
-        min-width: 0 !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .user-nav { 
-        display: flex !important;
-        align-items: center !important;
-        flex-shrink: 0 !important; /* ✅ ညာဘက်က ခလုတ်ကို လုံးဝ မကျုံ့စေရ */
-        visibility: visible !important;
-      }
-      .login-btn { 
-        padding: 0.4rem 0.6rem !important;
-        font-size: 0.75rem !important;
-        white-space: nowrap !important; /* ✅ စာသားကို ဘယ်တော့မှ နှစ်ကြောင်းမခွဲစေရ */
-      }
-      .user-info img { 
-        width: 24px !important; 
-        height: 24px !important; 
-      }
-      .user-name { 
-        max-width: 60px !important;
-        font-size: 0.7rem !important;
-      }
-      .upload-area { flex-wrap: wrap; }
-      .file-name { width: 100%; font-size: 0.75rem; }
-      .input-area { padding: 0.75rem; }
-      #userInput { font-size: 0.875rem; }
+      .chat-header { padding: 0.5rem !important; }
+      .title { font-size: 0.95rem !important; }
+      .login-btn { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
+      .user-name { max-width: 60px !important; font-size: 0.7rem !important; }
       .history-sidebar { width: 100%; right: -100%; }
     }
   </style>
 </head>
 <body>
   <div class="chat-container">
-    <!-- ✅ Header with Auth -->
     <div class="chat-header">
       <div class="title">
         <span>⚽</span> Football AI 
       </div>
-      <!-- ✅ ID နဲ့ Class ကို user-nav / userNav လို့ ပြောင်းထား -->
+      
+      <!-- ✅ HTML မှာ ကြိုတင် ထည့်သွင်းထားသော Login Button (JavaScript မလိုတော့ပါ) -->
       <div class="user-nav" id="userNav">
-        <!-- Will be populated by JavaScript -->
+        <a href="/api/auth/google" class="login-btn" id="hardcodedLoginBtn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path fill="#fff" d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+          </svg>
+          Login
+        </a>
       </div>
     </div>
     
-    <!-- ✅ File Upload Area -->
     <div class="upload-area">
       <label class="upload-btn">
         📁 Upload Excel/CSV
@@ -229,10 +205,7 @@
       <em>💡 Tip: "More" လို့ ရိုက်ရင် ရလဒ်တွေကို ဆက်ကြည့်နိုင်ပါတယ်</em></div>
     </div>
     
-    <!-- ✅ Scroll hint -->
-    <div class="scroll-hint" id="scrollHint" onclick="scrollToBottom()">
-      ⬇️ စာသားအသစ်ရှိသည်
-    </div>
+    <div class="scroll-hint" id="scrollHint" onclick="scrollToBottom()">⬇️ စာသားအသစ်ရှိသည်</div>
     
     <div class="input-area">
       <input type="text" id="userInput" placeholder="ဥပမာ: Villa vs Arsenal အနီးစပ်ဆုံး HO နဲ့ HA ရှာပေးပါ" autocomplete="off">
@@ -240,7 +213,6 @@
     </div>
   </div>
   
-  <!-- ✅ Chat History Sidebar -->
   <div class="history-sidebar" id="historySidebar">
     <div class="history-header">
       <h3>💬 Chat History</h3>
@@ -251,7 +223,6 @@
     </div>
   </div>
   
-  <!-- ✅ Overlay -->
   <div class="overlay" id="overlay" onclick="toggleHistory()"></div>
 
   <script>
@@ -261,10 +232,7 @@
     const fileInput = document.getElementById('fileInput');
     const fileName = document.getElementById('fileName');
     const fileStatus = document.getElementById('fileStatus');
-    
-    // ✅ authArea ကို userNav နဲ့ အစားထိုးထား
     const userNav = document.getElementById('userNav');
-    
     const historySidebar = document.getElementById('historySidebar');
     const historyList = document.getElementById('historyList');
     const overlay = document.getElementById('overlay');
@@ -275,20 +243,13 @@
     let uploadedFile = null;
     let currentChatResponse = '';
 
-    // ✅ Check Login Status on Load
     async function checkAuth() {
-      console.log("🔍 [Frontend] Starting checkAuth...");
       try {
         const res = await fetch('/api/auth/status?t=' + Date.now(), { credentials: 'include' });
-        console.log("✅ [Frontend] Response Status:", res.status);
-        
         const data = await res.json();
-        console.log("✅ [Frontend] Response Data:", data);
         
         if (data.loggedIn && data.user) {
-          console.log("🎉 [Frontend] User is logged in! Updating UI...");
           const displayName = data.user.name || data.user.email?.split('@')[0] || 'User';
-          
           if (userNav) {
             userNav.innerHTML = `
               <div class="user-info">
@@ -298,118 +259,68 @@
                 <button onclick="toggleHistory()" class="login-btn secondary">📜</button>
               </div>
             `;
-            console.log("✅ [Frontend] UI Updated Successfully!");
             loadHistory();
-          } else {
-            console.error("❌ [Frontend] Element 'userNav' not found in HTML!");
-          }
-        } else {
-          console.log("⚠️ [Frontend] User is NOT logged in. Showing Login button.");
-          if (userNav) {
-            userNav.innerHTML = `
-              <a href="/api/auth/google" class="login-btn" title="Login with Google">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path fill="#fff" d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
-                </svg>
-                Login
-              </a>
-            `;
           }
         }
+        // ✅ မဝင်ရသေးရင် HTML ထဲက ကြိုထည့်ထားတဲ့ Login Button က အလိုအလို ကျန်နေခဲ့ပါမယ်။ JS က ဘာမှ ထပ်မလုပ်တော့ပါ။
       } catch (err) {
-        console.error("❌ [Frontend] Auth check failed completely:", err);
-        if (userNav) {
-          userNav.innerHTML = `<a href="/api/auth/google" class="login-btn">Login</a>`;
-        }
+        console.error("Auth check failed:", err);
       }
     }
 
-    // ✅ Logout
     async function logout() {
-      console.log("🔍 [Frontend] Logging out...");
       try {
         const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-        if (res.ok) {
-          console.log("✅ [Frontend] Logout successful. Reloading page...");
-          window.location.reload();
-        } else {
-          console.error("❌ [Frontend] Logout failed:", res.status);
-        }
+        if (res.ok) window.location.reload();
       } catch (err) {
-        console.error("❌ [Frontend] Logout error:", err);
+        console.error("Logout error:", err);
       }
     }
 
-    // ✅ Toggle History Sidebar
     function toggleHistory() {
       historySidebar.classList.toggle('open');
       overlay.classList.toggle('show');
-      if (historySidebar.classList.contains('open')) {
-        loadHistory();
-      }
+      if (historySidebar.classList.contains('open')) loadHistory();
     }
 
-    // ✅ Load Chat History
     async function loadHistory() {
       try {
-        historyList.innerHTML = '<div class="history-empty"><div style="font-size:1.5rem;margin-bottom:8px;">📭</div>No chat history yet<br><small style="display:block;margin-top:8px;">Start chatting to save history</small></div>';
-        
         const res = await fetch('/api/chat/history', { credentials: 'include' });
         if (!res.ok) throw new Error('History fetch failed');
         const data = await res.json();
         
         if (data.history && data.history.length > 0) {
           historyList.innerHTML = data.history.map((chat, i) => {
-            const date = new Date(chat.timestamp).toLocaleString('my-MM', { 
-              month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-            });
+            const date = new Date(chat.timestamp).toLocaleString('my-MM', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const preview = chat.userMessage.substring(0, 35) + (chat.userMessage.length > 35 ? '...' : '');
-            const odds = chat.searchParams?.targetValue ? ` | ${chat.searchParams.activeSide?.toUpperCase()}:${chat.searchParams.targetValue}` : '';
-            
-            return `
-              <div class="history-item" onclick="loadChat(${i})">
-                <div class="date">🕐 ${date}</div>
-                <div class="preview">${preview}</div>
-                ${odds ? `<div class="odds">${odds}</div>` : ''}
-              </div>
-            `;
+            return `<div class="history-item" onclick="loadChat(${i})"><div class="date">🕐 ${date}</div><div class="preview">${preview}</div></div>`;
           }).join('');
+        } else {
+          historyList.innerHTML = '<div class="history-empty">📭 No history yet</div>';
         }
       } catch (err) {
-        console.error('Load history failed:', err);
-        historyList.innerHTML = '<div class="history-empty" style="color:#dc3545;">❌ Failed to load history</div>';
+        historyList.innerHTML = '<div class="history-empty" style="color:#dc3545;">❌ Failed</div>';
       }
     }
 
-    // ✅ Load Specific Chat
     async function loadChat(index) {
       try {
         const res = await fetch('/api/chat/history', { credentials: 'include' });
-        if (!res.ok) throw new Error('Chat fetch failed');
         const data = await res.json();
-        
         if (data.history[index]) {
           const chat = data.history[index];
-          chatBox.innerHTML = `
-            <div class="user-msg">👤 You: ${chat.userMessage}</div>
-            <div>${chat.aiResponse}</div>
-          `;
+          chatBox.innerHTML = `<div class="user-msg">👤 You: ${chat.userMessage}</div><div>${chat.aiResponse}</div>`;
           toggleHistory();
           scrollToBottom();
         }
-      } catch (err) {
-        console.error('Load chat failed:', err);
-      }
+      } catch (err) { console.error('Load chat failed:', err); }
     }
 
-    // ✅ File Upload Handler
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      
       fileName.textContent = file.name.length > 25 ? file.name.substring(0, 22) + '...' : file.name;
       uploadedFile = file;
-      
       fileStatus.textContent = '📤 Uploading...';
       fileStatus.className = 'file-status pending';
       sendBtn.disabled = true;
@@ -418,54 +329,36 @@
       formData.append('file', file);
       
       try {
-        const response = await fetch('/api/chat-stream', {
-          method: 'POST',
-          body: formData
-        });
-        
+        const response = await fetch('/api/chat-stream', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('Upload failed');
-        
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullResponse = '';
-        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          fullResponse += chunk;
+          fullResponse += decoder.decode(value, { stream: true });
         }
-        
         fileStatus.textContent = '✅ Uploaded!';
         fileStatus.className = 'file-status success';
-        
-        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left: 4px solid var(--success); padding-left: 10px;">📁 File "${fileName.textContent}" uploaded successfully! Ready to search historical data.</div>\n\n`;
+        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left: 4px solid var(--success); padding-left: 10px;">📁 File "${fileName.textContent}" uploaded successfully!</div>\n\n`;
         scrollToBottom();
-        
-        if (await isLoggedIn()) {
-          await saveChatToHistory('📁 File Upload: ' + file.name, fullResponse, { type: 'file_upload', fileName: file.name });
-        }
-        
+        if (await isLoggedIn()) await saveChatToHistory('📁 File Upload: ' + file.name, fullResponse, { type: 'file_upload' });
       } catch (err) {
         fileStatus.textContent = '❌ Failed';
         fileStatus.className = 'file-status error';
-        chatBox.innerHTML += `<div style="color: var(--danger);">❌ Error: ${err.message}</div>\n\n`;
       } finally {
         sendBtn.disabled = false;
       }
     });
 
-    // ✅ Scroll handlers
     chatBox.addEventListener('scroll', () => {
       const threshold = 50;
       const position = chatBox.scrollTop + chatBox.clientHeight;
       const height = chatBox.scrollHeight;
       isAtBottom = (height - position) < threshold;
-      if (!isAtBottom && isStreaming) {
-        scrollHint.classList.add('show');
-      } else {
-        scrollHint.classList.remove('show');
-      }
+      if (!isAtBottom && isStreaming) scrollHint.classList.add('show');
+      else scrollHint.classList.remove('show');
     });
 
     function scrollToBottom() {
@@ -473,18 +366,14 @@
       scrollHint.classList.remove('show');
     }
 
-    // ✅ Check if logged in
     async function isLoggedIn() {
       try {
         const res = await fetch('/api/auth/status', { credentials: 'include' });
         const data = await res.json();
         return data.loggedIn;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     }
 
-    // ✅ Save chat to history
     async function saveChatToHistory(userMessage, aiResponse, searchParams = {}) {
       try {
         await fetch('/api/chat/save', {
@@ -493,12 +382,9 @@
           credentials: 'include',
           body: JSON.stringify({ userMessage, aiResponse, searchParams })
         });
-      } catch (err) {
-        console.error('Save chat failed:', err);
-      }
+      } catch (err) { console.error('Save chat failed:', err); }
     }
 
-    // ✅ Send message
     async function send() {
       const msg = userInput.value.trim();
       if (!msg || isStreaming) return;
@@ -524,7 +410,6 @@
         });
 
         if (!response.ok) throw new Error('Network error');
-
         document.getElementById(loadingId)?.remove();
         isAtBottom = true;
 
@@ -536,15 +421,9 @@
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           currentChatResponse += chunk;
-          
-          // ✅ Chunk တွေကို <div> အထဲ ထည့်ပေးလိုက်တာနဲ့ CSS .chat-box div ရဲ့ white-space: pre-wrap က အလုပ်လုပ်ပါလိမ့်မယ်
           chatBox.innerHTML += `<div>${chunk}</div>`;
-          
-          if (isAtBottom) {
-            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'auto' });
-          } else {
-            scrollHint.classList.add('show');
-          }
+          if (isAtBottom) chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'auto' });
+          else scrollHint.classList.add('show');
         }
         
         if (await isLoggedIn()) {
@@ -552,15 +431,11 @@
           const nums = msg.match(/\d+\.?\d*/g);
           if (nums) {
             searchParams.targetValue = parseFloat(nums[0]);
-            if (msg.toLowerCase().includes('ho') || msg.toLowerCase().includes('home')) {
-              searchParams.activeSide = 'home';
-            } else if (msg.toLowerCase().includes('ao') || msg.toLowerCase().includes('away')) {
-              searchParams.activeSide = 'away';
-            }
+            if (msg.toLowerCase().includes('ho') || msg.toLowerCase().includes('home')) searchParams.activeSide = 'home';
+            else if (msg.toLowerCase().includes('ao') || msg.toLowerCase().includes('away')) searchParams.activeSide = 'away';
           }
           await saveChatToHistory(msg, currentChatResponse, searchParams);
         }
-
       } catch (err) {
         document.getElementById(loadingId)?.remove();
         chatBox.innerHTML += `\n<div style="color: var(--danger);">❌ Error: ${err.message}</div>\n`;
@@ -571,11 +446,8 @@
       }
     }
 
-    // ✅ Initialize
     checkAuth();
     userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
-    
-    // ✅ Focus input on load
     setTimeout(() => userInput.focus(), 300);
   </script>
 </body>
