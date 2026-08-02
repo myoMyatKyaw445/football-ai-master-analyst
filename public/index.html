@@ -25,7 +25,17 @@
     
     .chat-container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; width: 100%; background: var(--surface); box-shadow: 0 0 20px rgba(0,0,0,0.05); }
     
-    .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border); background: var(--surface); z-index: 10; }
+    .chat-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 1rem; 
+  border-bottom: 1px solid var(--border); 
+  background: var(--surface); 
+  z-index: 10; 
+  width: 100%; /* ✅ Header width ကို 100% သေချာစေ */
+  box-sizing: border-box; /* ✅ Padding ကို width ထဲ ထည့်တွက် */
+}
     .title { 
   font-size: 1.25rem; 
   font-weight: 600; 
@@ -112,18 +122,35 @@
 
     /* Mobile Responsive */
     @media (max-width: 640px) {
-  .chat-header { padding: 0.75rem; }
-  .title span { font-size: 1rem; }
+  .chat-header { 
+    padding: 0.75rem; 
+    flex-wrap: wrap; /* ✅ Mobile မှာ content တွေ wrap ဖြစ်ခွင့်ပေး */
+    gap: 0.5rem; /* ✅ Wrap ဖြစ်တဲ့အခါ ကြားမှာ gap ပေး */
+  }
   .title { 
-    max-width: 150px; /* ✅ Mobile မှာ title ကို အများဆုံး 150px အထိပဲ ပြ */
+    font-size: 1rem; 
+    flex: 1; /* ✅ Title က ရှိသမျှ နေရာယူ */
+    min-width: 0; /* ✅ Flex item shrink ဖြစ်ခွင့်ပေး */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .auth-area { 
+    flex-shrink: 0; /* ✅ Auth area ကို shrink မဖြစ်အောင် ကာကွယ် */
   }
   .login-btn { 
-    padding: 0.4rem 0.75rem; /* ✅ Mobile မှာ button padding ကို လျှော့ */
-    font-size: 0.8rem; /* ✅ Mobile မှာ font size ကို လျှော့ */
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  .user-info img { 
+    width: 28px; 
+    height: 28px; 
   }
   .user-name { 
-    max-width: 100px; /* ✅ Mobile မှာ user name ကို လျှော့ */
+    max-width: 80px;
+    font-size: 0.75rem;
   }
+  .title span { font-size: 1rem; }
   .upload-area { flex-wrap: wrap; }
   .file-name { width: 100%; font-size: 0.75rem; }
   .input-area { padding: 0.75rem; }
