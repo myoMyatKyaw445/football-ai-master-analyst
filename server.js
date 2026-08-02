@@ -987,24 +987,27 @@ ${resultsList.slice(0, 5).map((r, i) => `   ${i+1}. ${r.teams}: ${r.result} | ${
 
 // ✅ Stream basic prediction
 async function streamPrediction(prediction, res, delay = 15) {
-  let output = `\n`;
-  output += `═══════════════════════════════════════\n`;
-  output += `🧠 AI PREDICTION ANALYSIS\n`;
+  let output = `\n\n═══════════════════════════════════════\n`;
+  output += `🧠 **AI PREDICTION ANALYSIS**\n`;
   output += `═══════════════════════════════════════\n\n`;
-  output += `🎯 Recommendation: ${prediction.recommendation}\n`;
-  output += `📊 Confidence: ${prediction.confidence}%\n\n`;
-  output += `📋 Reasoning:\n`;
-  prediction.reasoning.forEach(r => { output += `   ${r}\n`; });
+  
+  output += `🎯 **Recommendation:** ${prediction.recommendation}\n`;
+  output += `📊 **Confidence:** ${prediction.confidence}%\n\n`;
+  
+  output += `📋 **Reasoning:**\n`;
+  prediction.reasoning.forEach(r => { output += `   • ${r}\n`; });
+  
   if (prediction.stats) {
-    output += `\n📈 Historical Stats (based on ${prediction.stats.totalMatches} similar matches):\n`;
+    output += `\n📈 **Historical Stats** (based on ${prediction.stats.totalMatches} similar matches):\n`;
     output += `   🏠 Home Wins: ${prediction.stats.homeWins} (${prediction.stats.homeWinRate}%)\n`;
     output += `   ✈️ Away Wins: ${prediction.stats.awayWins} (${prediction.stats.awayWinRate}%)\n`;
     output += `   🤝 Draws: ${prediction.stats.draws} (${prediction.stats.drawRate}%)\n`;
     output += `   ⚽ Avg Goals: Home ${prediction.stats.avgHomeGoals} vs Away ${prediction.stats.avgAwayGoals}\n`;
   }
-  output += `\n⚠️ Disclaimer: ဤခန့်မှန်းချက်သည် သမိုင်းကြောင်း ဒေတာအပေါ် အခြေခံထားခြင်း ဖြစ်ပြီး\n`;
-  output += `   အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
+  
+  output += `\n⚠️ **Disclaimer:** ဤခန့်မှန်းချက်သည် သမိုင်းကြောင်း ဒေတာအပေါ် အခြေခံထားခြင်း ဖြစ်ပြီး အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်。\n`;
   output += `═══════════════════════════════════════\n`;
+  
   await streamText(output, res, delay);
 }
 
@@ -1070,26 +1073,25 @@ async function streamMarketOddsAnalysis(analysis, res, delay = 15) {
 
 // ✅ Stream Odds Range Analysis
 async function streamOddsRangeAnalysis(analysis, res, delay = 12) {
-  let output = `\n`;
-  output += `═══════════════════════════════════════\n`;
-  output += `📐 ODDS RANGE ANALYSIS (CO vs Target Range)\n`;
+  let output = `\n\n═══════════════════════════════════════\n`;
+  output += `📐 **ODDS RANGE ANALYSIS** (CO vs Target Range)\n`;
   output += `═══════════════════════════════════════\n\n`;
   
   output += `${analysis.summary}\n\n`;
   
   if (analysis.matchingMatches && analysis.matchingMatches.length > 0) {
-    output += `📋 Historical Matches with Same Pattern:\n`;
+    output += `📋 **Historical Matches with Same Pattern:**\n`;
     output += `─────────────────────────────\n`;
     
     analysis.matchingMatches.forEach((m, i) => {
       output += `${i + 1}. ${m.teams}\n`;
       output += `   📅 ${m.date || '-'} | ✅ RESULT: ${m.result}\n`;
-      output += `   📊 Target Range: [${m.odds.targetLow.toFixed(2)}–${m.odds.targetHigh.toFixed(2)}] | Market: ${m.odds.market.toFixed(2)}\n`;
+      output += `   📊 Target Range: [${m.odds.targetLow.toFixed(2)} – ${m.odds.targetHigh.toFixed(2)}] | Market: ${m.odds.market.toFixed(2)}\n`;
       output += `─────────────────────────────\n`;
     });
     
     if (analysis.stats) {
-      output += `\n📈 Pattern Statistics:\n`;
+      output += `\n📈 **Pattern Statistics:**\n`;
       output += `   • Total matches: ${analysis.stats.total}\n`;
       output += `   • 🏠 Home Wins: ${analysis.stats.homeWins} (${analysis.stats.homeWinRate}%)\n`;
       output += `   • ✈️ Away Wins: ${analysis.stats.awayWins} (${analysis.stats.awayWinRate}%)\n`;
@@ -1099,8 +1101,7 @@ async function streamOddsRangeAnalysis(analysis, res, delay = 12) {
     output += `⚠️ ဤအခြေအနေနဲ့ ကိုက်ညီတဲ့ historical match မတွေ့ရပါ။\n`;
   }
   
-  output += `\n💡 ဤ analysis သည် CO vs Target Range ဆက်နွယ်မှုအပေါ် အခြေခံထားခြင်း ဖြစ်ပြီး\n`;
-  output += `   အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
+  output += `\n💡 ဤ analysis သည် CO vs Target Range ဆက်နွယ်မှုအပေါ် အခြေခံထားခြင်း ဖြစ်ပြီး အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
   output += `═══════════════════════════════════════\n`;
   
   await streamText(output, res, delay);
@@ -1108,15 +1109,14 @@ async function streamOddsRangeAnalysis(analysis, res, delay = 12) {
 
 // ✅ Stream Master Analysis - NEW FEATURE
 async function streamMasterAnalysis(analysis, res, delay = 12) {
-  let output = `\n`;
-  output += `═══════════════════════════════════════\n`;
-  output += `🎯 MASTER ANALYSIS - အသေးစိတ် CO Condition\n`;
+  let output = `\n\n═══════════════════════════════════════\n`;
+  output += `🎯 **MASTER ANALYSIS** - အသေးစိတ် CO Condition\n`;
   output += `═══════════════════════════════════════\n\n`;
   
   output += `${analysis.summary}\n\n`;
   
   if (analysis.matchingMatches && analysis.matchingMatches.length > 0) {
-    output += `📋 အပြည့်အစုံ ရလဒ်များ (ပွဲ ${analysis.matchingMatches.length} ပွဲ):\n`;
+    output += `📋 **အပြည့်အစုံ ရလဒ်များ** (ပွဲ ${analysis.matchingMatches.length} ပွဲ):\n`;
     output += `─────────────────────────────\n`;
     
     analysis.matchingMatches.forEach((m, i) => {
@@ -1124,26 +1124,26 @@ async function streamMasterAnalysis(analysis, res, delay = 12) {
       const margin = Math.abs(m.goalDiff) >= 2 ? ' (2+ ဂိုးပြတ်)' : m.goalDiff !== 0 ? ' (1 ဂိုးပြတ်)' : '';
       
       output += `${i + 1}. ${m.teams}\n`;
-      output += `   📅 ${m.date || '-'} | ${winType} RESULT: ${m.result}${margin}\n`;
+      output += `   📅 ${m.date || '-'} | ${winType} **RESULT:** ${m.result}${margin}\n`;
       output += `   📊 ${analysis.selectedCO}: ${m.odds.selectedCO.toFixed(2)} | Diff: ${m.odds.selectedCODiff}\n`;
       output += `─────────────────────────────\n`;
     });
   }
   
   if (analysis.stats) {
-    output += `\n📈 အနှစ်ချုပ် Statistics:\n`;
-    output += `• စုစုပေါင်း ပွဲ: ${analysis.stats.total}\n`;
-    output += `• 🏠 အိမ်ရှင် နိုင်: ${analysis.stats.homeWins} (${analysis.stats.homeWinRate}%)\n`;
-    output += `• ✈️ အဝေး နိုင်: ${analysis.stats.awayWins} (${analysis.stats.awayWinRate}%)\n`;
-    output += `• 🤝 သရေ: ${analysis.stats.draws} (${analysis.stats.drawRate}%)\n`;
-    output += `• ⚽ အိမ်ရှင် ၁ ဂိုးပြတ်: ${analysis.stats.homeWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.homeWinBy2Plus}\n`;
-    output += `• ⚽ အဝေး ၁ ဂိုးပြတ်: ${analysis.stats.awayWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.awayWinBy2Plus}\n`;
+    output += `\n📈 **အနှစ်ချုပ် Statistics:**\n`;
+    output += `   • စုစုပေါင်း ပွဲ: ${analysis.stats.total}\n`;
+    output += `   • 🏠 အိမ်ရှင် နိုင်: ${analysis.stats.homeWins} (${analysis.stats.homeWinRate}%)\n`;
+    output += `   • ✈️ အဝေး နိုင်: ${analysis.stats.awayWins} (${analysis.stats.awayWinRate}%)\n`;
+    output += `   • 🤝 သရေ: ${analysis.stats.draws} (${analysis.stats.drawRate}%)\n`;
+    output += `   • ⚽ အိမ်ရှင် ၁ ဂိုးပြတ်: ${analysis.stats.homeWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.homeWinBy2Plus}\n`;
+    output += `   • ⚽ အဝေး ၁ ဂိုးပြတ်: ${analysis.stats.awayWinBy1} | ၂+ ဂိုးပြတ်: ${analysis.stats.awayWinBy2Plus}\n`;
   }
   
   const condLabel = analysis.coCondition === 'within' ? 'ကြေးတူညီ' : 
                    analysis.coCondition === 'above' ? 'ကြေးပျော့' : 'ကြေးပြင်း';
-  output += `\n💡 ဤ Master Analysis သည် ${analysis.targetSide === 'home' ? 'HO/HA' : 'AO/AA'} + ${analysis.selectedCO} (${condLabel}) အခြေအနေအတွက်\n`;
-  output += `   Historical matches ${analysis.stats?.total || 0} ပွဲကို အခြေခံထားခြင်း ဖြစ်သည်။\n`;
+                   
+  output += `\n💡 ဤ Master Analysis သည် ${analysis.targetSide === 'home' ? 'HO/HA' : 'AO/AA'} + ${analysis.selectedCO} (${condLabel}) အခြေအနေအတွက် Historical matches ${analysis.stats?.total || 0} ပွဲကို အခြေခံထားခြင်း ဖြစ်သည်။\n`;
   output += `   အာမခံချက် မရှိပါ။ ကစားပွဲရလဒ်သည် ကွဲပြားနိုင်ပါသည်။\n`;
   output += `═══════════════════════════════════════\n`;
   
@@ -1412,22 +1412,37 @@ app.post('/api/chat-stream', upload.single('file'), async (req, res) => {
           }
           
           // Stream matches
-          for (let i = 0; i < pageMatches.length; i++) {
-            const m = pageMatches[i];
-            const matchNumber = startIndex + i + 1;
-            
-            let matchOutput = `\n`;
-            matchOutput += `🏆 Match ${matchNumber} - ${m["teams"] || 'Unknown'}\n`;
-            matchOutput += `📅 ${m["date"] || '-'} | ${m["context"] || '-'} | Week ${m["week"] || '-'}\n`;
-            matchOutput += `🏟️ ${m["homeTeam"] || '-'} vs ${m["awayTeam"] || '-'}\n`;
-            matchOutput += `📊 Odds: HO:${m["homeOverallOdds"] ?? '-'} DO:${m["drawOverallOdds"] ?? '-'} AO:${m["awayOverallOdds"] ?? '-'}\n`;
-            matchOutput += `📊 Adj: HA:${m["homeAdjustedDecimal"] ?? '-'} DA:${m["drawAdjustedDecimal"] ?? '-'} AA:${m["awayAdjustedDecimal"] ?? '-'}\n`;
-            matchOutput += `📊 Market: COH:${m["coh"] ?? '-'} COD:${m["cod"] ?? '-'} COA:${m["coa"] ?? '-'}\n`;
-            matchOutput += `✅ RESULT: ${m["fthgActual"] ?? '?'} - ${m["ftagActual"] ?? '?'}\n`;
-            matchOutput += `─────────────────────────────\n`;
-            
-            await streamText(matchOutput, res, 10);
-          }
+      for (let i = 0; i < pageMatches.length; i++) {
+      const item = pageMatches[i];
+      const m = item.m;
+      const matchNumber = i + 1;
+      
+      let matchOutput = `\n🏆 **Match ${matchNumber}** - ${m["teams"] || 'Unknown'}\n`;
+      matchOutput += `📅 ${m["date"] || '-'} | ${m["context"] || '-'} | Week ${m["week"] || '-'}\n`;
+      matchOutput += `🏟️ ${m["homeTeam"] || '-'} vs ${m["awayTeam"] || '-'}\n\n`;
+      
+      matchOutput += `📊 Odds: HO: ${m["homeOverallOdds"] ?? '-'} | DO: ${m["drawOverallOdds"] ?? '-'} | AO: ${m["awayOverallOdds"] ?? '-'}\n`;
+      matchOutput += `📊 Adj:  HA: ${m["homeAdjustedDecimal"] ?? '-'} | DA: ${m["drawAdjustedDecimal"] ?? '-'} | AA: ${m["awayAdjustedDecimal"] ?? '-'}\n`;
+      matchOutput += `📊 Market: COH: ${m["coh"] ?? '-'} | COD: ${m["cod"] ?? '-'} | COA: ${m["coa"] ?? '-'}\n\n`;
+      
+      matchOutput += `📊 Prob: H: ${m["homeWinProbability"] ?? '-'}% | D: ${m["drawProbability"] ?? '-'}% | A: ${m["awayWinProbability"] ?? '-'}%\n`;
+      matchOutput += `📊 Last6 Prob: H: ${m["homeLast6Probability"] ?? '-'}% | D: ${m["drawLast6Probability"] ?? '-'}% | A: ${m["awayLast6Probability"] ?? '-'}%\n\n`;
+      
+      matchOutput += `📊 Rates: H-Win: ${m["homeWinRate"] ?? '-'} | Draw: ${m["drawRate"] ?? '-'} | A-Win: ${m["awayWinRate"] ?? '-'} | Score: ${m["scoringRate"] ?? '-'}\n`;
+      matchOutput += `📊 Last6: H-Pts: ${m["homeLast6Points"] ?? '-'} (GD: ${m["homeLast6GoalsGD"] ?? '-'}) | A-Pts: ${m["awayLast6Points"] ?? '-'} (GD: ${m["awayLast6GoalsGD"] ?? '-'})\n`;
+      matchOutput += `📊 Rank: Home: ${m["homeRanking"] ?? '-'} | Away: ${m["awayRanking"] ?? '-'}\n\n`;
+      
+      matchOutput += `✅ RESULT: ${m["fthgActual"] ?? '?'} - ${m["ftagActual"] ?? '?'}\n`;
+      matchOutput += `📏 Distance: ${item.diff.toFixed(3)}\n`;
+      matchOutput += `📐 CO: ${activeSide === 'home' ? `COH: ${m["coh"] ?? '-'} vs HO/HA` : `COA: ${m["coa"] ?? '-'} vs AO/AA`} [${item.coCondition}]\n`;
+      matchOutput += `─────────────────────────────\n`;
+      
+      await streamText(matchOutput, res, 10);
+      
+      if (i < pageMatches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
           
           // Update session page
           await saveSearchSession(sessionId, { ...session, currentPage: nextPage });
