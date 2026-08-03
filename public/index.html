@@ -33,15 +33,16 @@
     }
     
     .chat-container { 
-      display: flex; 
-      flex-direction: column; 
-      height: 100vh; 
-      width: 100%; 
-      max-width: 800px; 
-      background: var(--surface); 
-      box-shadow: 0 0 20px rgba(0,0,0,0.05); 
-      position: relative; 
-    }
+  display: flex; 
+  flex-direction: column; 
+  height: 100vh; 
+  width: 100%; 
+  max-width: 800px; 
+  background: var(--surface); 
+  box-shadow: 0 0 20px rgba(0,0,0,0.05); 
+  position: relative; 
+  padding-top: 80px !important; /* ✅ Sticky Header ရဲ့ အမြင့်လောက် နေရာခွဲပေး */
+}
     
     /* ✅ စမ်းသပ်ရန် အဝါရောင် ခေတ္တပြောင်းထားပါသည်။ ပေါ်လာရင် Box ရှိပြီး အထဲက စာသားပဲ ပျောက်နေတာ ဖြစ်သည်။ */
     .chat-header { 
