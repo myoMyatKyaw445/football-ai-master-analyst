@@ -105,7 +105,16 @@
     .user-info img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
     .user-name { font-size: 0.8rem; font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .upload-area { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; background: #f1f5f9; }
+    .upload-area { 
+  padding: 0.75rem 1rem; 
+  border-bottom: 1px solid var(--border); 
+  display: flex; 
+  align-items: center; 
+  gap: 0.75rem; 
+  background: #f1f5f9;
+  position: relative; /* ✅ Upload area ကို relative ထားပါ */
+  z-index: 50;        /* ✅ Header (100) အောက်၊ သာမန် content အပေါ်မှာ ထားပါ */
+}
     .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
     .upload-btn:hover { border-color: var(--primary); color: var(--primary); }
     .file-input { display: none; }
@@ -165,7 +174,23 @@
     .overlay.show { opacity: 1; pointer-events: all; }
 
     @media (max-width: 640px) {
-      .chat-header { padding: 0.5rem !important; }
+      .chat-header { 
+  position: sticky !important;
+  top: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0.75rem !important;
+  border-bottom: 1px solid var(--border); 
+  background: #ffeb3b !important;
+  z-index: 100 !important; /* ✅ 9999 အစား 100 သာ ထားပါ */
+  width: 100% !important;
+  box-sizing: border-box !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+}
       .title { font-size: 0.95rem !important; }
       .login-btn { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
       .user-name { max-width: 60px !important; font-size: 0.7rem !important; }
