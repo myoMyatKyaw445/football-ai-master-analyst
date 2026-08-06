@@ -143,11 +143,17 @@
     }
     
     .chat-box div { 
-      line-height: 1.6; 
-      font-size: 0.95rem; 
-      white-space: pre-wrap; 
-      word-wrap: break-word; 
-    }
+  line-height: 1.6; 
+  font-size: 0.95rem; 
+  white-space: pre-wrap;      /* ✅ \n (Enter) တွေကို စာကြောင်းအသစ် ခွဲပေး */
+  overflow-wrap: break-word;  /* ✅ စာလုံးရှည်တွေကိုသာ ဖြတ်ပေး (စာလုံးတစ်လုံးချင်းစီ မဟုတ်) */
+  word-break: keep-all;       /* ✅ စာလုံးတွေကို မဖြတ်ဘဲ ထားပေး (မြန်မာစာအတွက်) */
+  display: block;             /* ✅ block အဖြစ် ပြသ */
+  width: 100%;                /* ✅ အကျယ်အပြည့် */
+  max-width: 100%;            /* ✅ အများဆုံး 100% */
+  overflow-x: auto;           /* ✅ အလျားလိုက် ရှည်ရင် scroll လုပ်ခွင့်ပေး */
+  text-align: left;           /* ✅ ယ်ဘက် စီထား */
+}
     
     .user-msg { background: #eff6ff; color: var(--primary); padding: 0.75rem 1rem; border-radius: 12px 12px 0 12px; align-self: flex-end; max-width: 85%; font-weight: 500; }
     .loading { color: var(--secondary); font-style: italic; font-size: 0.875rem; animation: pulse 1.5s infinite; }
