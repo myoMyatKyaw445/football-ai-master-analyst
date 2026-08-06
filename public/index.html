@@ -32,7 +32,7 @@
       overflow: hidden; 
     }
     
-    .chat-container { 
+   .chat-container { 
   display: flex; 
   flex-direction: column; 
   height: 100vh; 
@@ -41,26 +41,30 @@
   background: var(--surface); 
   box-shadow: 0 0 20px rgba(0,0,0,0.05); 
   position: relative; 
-  padding-top: 80px !important; /* ✅ Sticky Header ရဲ့ အမြင့်လောက် နေရာခွဲပေး */
+  padding-top: 0 !important; /* ✅ padding-top ကို ဖျက်ပါ */
 }
     
     /* ✅ စမ်းသပ်ရန် အဝါရောင် ခေတ္တပြောင်းထားပါသည်။ ပေါ်လာရင် Box ရှိပြီး အထဲက စာသားပဲ ပျောက်နေတာ ဖြစ်သည်။ */
     .chat-header { 
-  position: sticky !important;  /* ✅ အပေါ်မှာ ကပ်ငြိနေအောင် လုပ်မယ် */
-  top: 0 !important;            /* ✅ အပေါ်ဆုံးမှာ ထားမယ် */
+  position: fixed !important;  /* ✅ sticky အစား fixed သုံးပါ */
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   display: flex !important;
   flex-direction: row !important;
   justify-content: space-between !important;
   align-items: center !important;
   padding: 0.75rem !important;
   border-bottom: 1px solid var(--border); 
-  background: #ffeb3b !important; /* ✅ အဝါရောင် (စမ်းသပ်ရန်) */
-  z-index: 9999 !important; 
+  background: #ffeb3b !important;
+  z-index: 100 !important;
   width: 100% !important;
+  max-width: 800px !important; /* ✅ Container နဲ့ အကျယ်တူ */
+  margin: 0 auto !important;   /* ✅ အလယ်မှာ ထားပါ */
   box-sizing: border-box !important;
   visibility: visible !important;
   opacity: 1 !important;
-  flex-shrink: 0 !important;   
+  flex-shrink: 0 !important;
 }
     
     .title { 
@@ -113,8 +117,9 @@
   align-items: center; 
   gap: 0.75rem; 
   background: #f1f5f9;
-  position: relative; /* ✅ Upload area ကို relative ထားပါ */
-  z-index: 50;        /* ✅ Header (100) အောက်၊ သာမန် content အပေါ်မှာ ထားပါ */
+  margin-top: 60px !important; /* ✅ Header ရဲ့ အမြင့်လောက် ခွဲပေး */
+  position: relative;
+  z-index: 50;
 }
     .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
     .upload-btn:hover { border-color: var(--primary); color: var(--primary); }
