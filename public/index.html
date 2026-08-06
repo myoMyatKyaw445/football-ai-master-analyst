@@ -109,16 +109,16 @@
     .user-name { font-size: 0.8rem; font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .upload-area { 
-      padding: 0.75rem 1rem; 
-      border-bottom: 1px solid var(--border); 
-      display: flex; 
-      align-items: center; 
-      gap: 0.75rem; 
-      background: #f1f5f9;
-      margin-top: 60px !important;
-      position: relative;
-      z-index: 50;
-    }
+  padding: 0.75rem 1rem; 
+  border-bottom: 1px solid var(--border); 
+  display: flex; 
+  align-items: center; 
+  gap: 0.75rem; 
+  background: #f1f5f9;
+  margin-top: 80px !important; /* ✅ Header အောက်မှာ ပြည့်ဝစွာ ပေါ်အောင် 80px ထား */
+  position: relative;
+  z-index: 50;
+}
     .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
     .upload-btn:hover { border-color: var(--primary); color: var(--primary); }
     .file-input { display: none; }
