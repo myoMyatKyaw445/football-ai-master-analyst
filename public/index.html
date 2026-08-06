@@ -54,7 +54,7 @@
       align-items: center !important;
       padding: 0.75rem !important;
       border-bottom: 1px solid var(--border); 
-      background: var(--surface) !important; /* ✅ မူလ အဖြူရောင် ပြန်ပြောင်း */
+      background: var(--surface) !important;
       z-index: 100 !important;
       width: 100% !important;
       max-width: 800px !important;
@@ -115,7 +115,7 @@
       align-items: center; 
       gap: 0.75rem; 
       background: #f1f5f9;
-      margin-top: 60px !important; /* ✅ Header အောက်မှာ နေရာယူ */
+      margin-top: 60px !important;
       position: relative;
       z-index: 50;
     }
@@ -139,13 +139,13 @@
       scroll-behavior: smooth; 
     }
     
-    /* ✅ စာသားပုံစံ ပြဿနာကို အပြီးတိုင် ဖြေရှင်းမည့် CSS */
+    /* ✅ Backend ကနေလာတဲ့ \n ကို စာကြောင်းအသစ်ခွဲပေးမယ့် CSS */
     .chat-box div { 
       line-height: 1.6; 
       font-size: 0.95rem; 
-      white-space: pre-wrap;       /* ✅ \n (Enter) ကို စာကြောင်းအသစ် ခွဲပေး */
-      word-wrap: break-word;       /* ✅ စာလုံးရှည်တွေကိုသာ ဖြတ်ပေး */
-      overflow-wrap: break-word;   /* ✅ Modern browser အတွက် အထောက်အကူ */
+      white-space: pre-wrap;       
+      word-wrap: break-word;       
+      overflow-wrap: break-word;   
       width: 100%; 
       text-align: left; 
     }
@@ -358,7 +358,7 @@
         }
         fileStatus.textContent = '✅ Uploaded!';
         fileStatus.className = 'file-status success';
-        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left: 4px solid var(--success); padding-left: 10px;">📁 File "${fileName.textContent}" uploaded successfully!</div>\n\n`;
+        chatBox.innerHTML += `<div style="color: var(--success); font-weight: 500; border-left: 4px solid var(--success); padding-left: 10px;">📁 File "${fileName.textContent}" uploaded successfully!</div>`;
         scrollToBottom();
         if (await isLoggedIn()) await saveChatToHistory('📁 File Upload: ' + file.name, fullResponse, { type: 'file_upload' });
       } catch (err) {
@@ -402,11 +402,12 @@
       } catch (err) { console.error('Save chat failed:', err); }
     }
 
+    // ✅ ပြင်ဆင်ထားသော Send Function (Chunk တိုင်းကို div အသစ်မဆောက်တော့ပါ)
     async function send() {
       const msg = userInput.value.trim();
       if (!msg || isStreaming) return;
 
-      chatBox.innerHTML += `<div class="user-msg">👤 You: ${msg}</div>\n\n`;
+      chatBox.innerHTML += `<div class="user-msg">👤 You: ${msg}</div>`;
       userInput.value = '';
       scrollToBottom();
 
@@ -430,6 +431,10 @@
         document.getElementById(loadingId)?.remove();
         isAtBottom = true;
 
+        // ✅ AI Response အတွက် <div> တစ်ခုတည်းကို ကြိုဖန်တီးထားပါမယ်
+        const aiResponseDiv = document.createElement('div');
+        chatBox.appendChild(aiResponseDiv);
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         
@@ -438,7 +443,10 @@
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
           currentChatResponse += chunk;
-          chatBox.innerHTML += `<div>${chunk}</div>`;
+          
+          // ✅ Chunk အသစ်တိုင်းကို အပေါ်က ဖန်တီးထားတဲ့ <div> တစ်ခုတည်းထဲကိုသာ ထည့်ပါမယ်
+          aiResponseDiv.innerHTML += chunk;
+          
           if (isAtBottom) chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'auto' });
           else scrollHint.classList.add('show');
         }
@@ -455,7 +463,7 @@
         }
       } catch (err) {
         document.getElementById(loadingId)?.remove();
-        chatBox.innerHTML += `\n<div style="color: var(--danger);">❌ Error: ${err.message}</div>\n`;
+        chatBox.innerHTML += `<div style="color: var(--danger);">❌ Error: ${err.message}</div>`;
       } finally {
         isStreaming = false;
         sendBtn.disabled = false;
