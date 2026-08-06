@@ -32,40 +32,38 @@
       overflow: hidden; 
     }
     
-   .chat-container { 
-  display: flex; 
-  flex-direction: column; 
-  height: 100vh; 
-  width: 100%; 
-  max-width: 800px; 
-  background: var(--surface); 
-  box-shadow: 0 0 20px rgba(0,0,0,0.05); 
-  position: relative; 
-  padding-top: 0 !important; /* ✅ padding-top ကို ဖျက်ပါ */
-}
+    .chat-container { 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+      width: 100%; 
+      max-width: 800px; 
+      background: var(--surface); 
+      box-shadow: 0 0 20px rgba(0,0,0,0.05); 
+      position: relative; 
+    }
     
-    /* ✅ စမ်းသပ်ရန် အဝါရောင် ခေတ္တပြောင်းထားပါသည်။ ပေါ်လာရင် Box ရှိပြီး အထဲက စာသားပဲ ပျောက်နေတာ ဖြစ်သည်။ */
     .chat-header { 
-  position: fixed !important;  /* ✅ sticky အစား fixed သုံးပါ */
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  padding: 0.75rem !important;
-  border-bottom: 1px solid var(--border); 
-  background: #ffeb3b !important;
-  z-index: 100 !important;
-  width: 100% !important;
-  max-width: 800px !important; /* ✅ Container နဲ့ အကျယ်တူ */
-  margin: 0 auto !important;   /* ✅ အလယ်မှာ ထားပါ */
-  box-sizing: border-box !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  flex-shrink: 0 !important;
-}
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 0.75rem !important;
+      border-bottom: 1px solid var(--border); 
+      background: var(--surface) !important; /* ✅ မူလ အဖြူရောင် ပြန်ပြောင်း */
+      z-index: 100 !important;
+      width: 100% !important;
+      max-width: 800px !important;
+      margin: 0 auto !important;
+      box-sizing: border-box !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      flex-shrink: 0 !important;
+    }
     
     .title { 
       font-size: 1.1rem; 
@@ -101,7 +99,7 @@
       font-weight: 600 !important;
       border: none !important;
       cursor: pointer !important;
-      white-space: nowrap !important; /* ✅ စာသား ဘယ်တော့မှ နှစ်ကြောင်းမခွဲစေရ */
+      white-space: nowrap !important;
     }
     
     .login-btn.secondary { background: var(--secondary) !important; }
@@ -111,16 +109,16 @@
     .user-name { font-size: 0.8rem; font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .upload-area { 
-  padding: 0.75rem 1rem; 
-  border-bottom: 1px solid var(--border); 
-  display: flex; 
-  align-items: center; 
-  gap: 0.75rem; 
-  background: #f1f5f9;
-  margin-top: 60px !important; /* ✅ Header ရဲ့ အမြင့်လောက် ခွဲပေး */
-  position: relative;
-  z-index: 50;
-}
+      padding: 0.75rem 1rem; 
+      border-bottom: 1px solid var(--border); 
+      display: flex; 
+      align-items: center; 
+      gap: 0.75rem; 
+      background: #f1f5f9;
+      margin-top: 60px !important; /* ✅ Header အောက်မှာ နေရာယူ */
+      position: relative;
+      z-index: 50;
+    }
     .upload-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); transition: all 0.2s; }
     .upload-btn:hover { border-color: var(--primary); color: var(--primary); }
     .file-input { display: none; }
@@ -133,7 +131,7 @@
     .chat-box { 
       flex: 1; 
       overflow-y: auto; 
-      overflow-x: hidden; /* ✅ အလျားလိုက် scroll မလိုအပ်အောင် ပိတ်ထား */
+      overflow-x: hidden; 
       padding: 1.5rem; 
       display: flex; 
       flex-direction: column; 
@@ -141,12 +139,13 @@
       scroll-behavior: smooth; 
     }
     
-     .chat-box div { 
+    /* ✅ စာသားပုံစံ ပြဿနာကို အပြီးတိုင် ဖြေရှင်းမည့် CSS */
+    .chat-box div { 
       line-height: 1.6; 
       font-size: 0.95rem; 
-      white-space: pre-wrap;      /* ✅ \n (Enter) တွေကို စာကြောင်းအသစ် ခွဲပေး */
-      word-wrap: break-word;      /* ✅ စာလုံးရှည်တွေကို မျက်နှာပြင်အကျယ်အတိုင်းသာ ဖြတ်ပေး (စာလုံးတစ်လုံးချင်းစီ မဟုတ်) */
-      overflow-wrap: break-word;  /* ✅ Modern browser အတွက် အထောက်အကူ */
+      white-space: pre-wrap;       /* ✅ \n (Enter) ကို စာကြောင်းအသစ် ခွဲပေး */
+      word-wrap: break-word;       /* ✅ စာလုံးရှည်တွေကိုသာ ဖြတ်ပေး */
+      overflow-wrap: break-word;   /* ✅ Modern browser အတွက် အထောက်အကူ */
       width: 100%; 
       text-align: left; 
     }
@@ -182,23 +181,7 @@
     .overlay.show { opacity: 1; pointer-events: all; }
 
     @media (max-width: 640px) {
-      .chat-header { 
-  position: sticky !important;
-  top: 0 !important;
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  padding: 0.75rem !important;
-  border-bottom: 1px solid var(--border); 
-  background: #ffeb3b !important;
-  z-index: 100 !important; /* ✅ 9999 အစား 100 သာ ထားပါ */
-  width: 100% !important;
-  box-sizing: border-box !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  flex-shrink: 0 !important;
-}
+      .chat-header { padding: 0.6rem !important; }
       .title { font-size: 0.95rem !important; }
       .login-btn { padding: 0.4rem 0.6rem !important; font-size: 0.75rem !important; }
       .user-name { max-width: 60px !important; font-size: 0.7rem !important; }
@@ -213,7 +196,6 @@
         <span>⚽</span> Football AI 
       </div>
       
-      <!-- ✅ HTML မှာ ကြိုတင် ထည့်သွင်းထားသော Login Button (JavaScript မလိုတော့ပါ) -->
       <div class="user-nav" id="userNav">
         <a href="/api/auth/google" class="login-btn" id="hardcodedLoginBtn">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -298,7 +280,6 @@
             loadHistory();
           }
         }
-        // ✅ မဝင်ရသေးရင် HTML ထဲက ကြိုထည့်ထားတဲ့ Login Button က အလိုအလို ကျန်နေခဲ့ပါမယ်။ JS က ဘာမှ ထပ်မလုပ်တော့ပါ။
       } catch (err) {
         console.error("Auth check failed:", err);
       }
